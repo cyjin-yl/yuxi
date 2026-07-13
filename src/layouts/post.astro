@@ -2,14 +2,26 @@
 import BaseLayout from './base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
+import BipartiteMatcher from '../components/BipartiteMatcher';
 
 interface Props {
   title: string;
   date: Date;
   tags?: string[];
+  luogu_url?: string;
+  luogu_title?: string;
+  difficulty?: string;
+  algo_tags?: string[];
+  summary?: string;
+  widget?: string;
 }
 
-const { title, date, tags = [] } = Astro.props;
+const { title, date, tags = [], luogu_url, luogu_title, difficulty, algo_tags, summary, widget } = Astro.props;
+
+const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-puji'
+  : difficulty === '提高' || difficulty === '提高-' ? 'diff-tigao'
+  : difficulty === '省选' || difficulty === '省选-' || difficulty === '省竞' ? 'diff-shengxuan'
+  : 'diff-unknown';
 ---
 
 <BaseLayout>
@@ -17,6 +29,21 @@ const { title, date, tags = [] } = Astro.props;
 
   <header class="post-header">
     <h1 class="post-title">{title}</h1>
+
+    {luogu_url && luogu_title && (
+      <div class="luogu-header">
+        <div class="luogu-title-row">
+          <span class="luogu-problem-name">{luogu_title}</span>
+          <a href={luogu_url} target="_blank" rel="noopener" class="luogu-link">洛谷原题 ↗</a>
+        </div>
+        <div class="luogu-meta">
+          {difficulty && <span class={`luogu-diff ${diffClass}`}>{difficulty}</span>}
+          {algo_tags?.map(tag => <span class="luogu-tag">{tag}</span>)}
+        </div>
+        {summary && <p class="luogu-summary">{summary}</p>}
+      </div>
+    )}
+
     <div class="post-meta">
       <time>{date.toLocaleDateString('zh-CN', {
         year: 'numeric',
@@ -34,6 +61,12 @@ const { title, date, tags = [] } = Astro.props;
       <slot />
     </article>
   </main>
+
+  {widget === 'bipartite-matcher' && (
+    <div class="post-widget">
+      <BipartiteMatcher client:only="react" />
+    </div>
+  )}
 
   <Footer />
 </BaseLayout>

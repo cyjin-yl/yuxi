@@ -11,6 +11,12 @@ export const collections = {
       date: z.date(),
       tags: z.array(z.string()).optional(),
       draft: z.boolean().optional(),
+      luogu_url: z.string().optional(),
+      luogu_title: z.string().optional(),
+      difficulty: z.string().optional(),
+      algo_tags: z.array(z.string()).optional(),
+      summary: z.string().optional(),
+      widget: z.string().optional(),
     }),
   }),
 };

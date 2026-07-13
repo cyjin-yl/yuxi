@@ -35,7 +35,7 @@ const posts = (await getCollection('blog'))
       {posts.map((post) => (
         <li class="post-item">
           <div class="post-item-title">
-            <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+            <a href={`/blog/${post.id}/`}>{post.data.title}</a>
           </div>
           <div class="post-item-meta">
             <time>{post.data.date.toLocaleDateString('zh-CN', {
