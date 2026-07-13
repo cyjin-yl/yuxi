@@ -445,6 +445,25 @@ a:hover {
   line-height: 1.5;
 }
 
+/* Augmentation info */
+.augmentation-info {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--accent-soft);
+  border: 1px solid var(--rule);
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.augmentation-info p { margin: 0.25rem 0; }
+
+.step-label {
+  margin-left: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  font-family: var(--font-mono);
+}
+
 /* ── React Widgets ── */
 
 .widget-container {

@@ -2,7 +2,7 @@
 import BaseLayout from './base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
-import BipartiteMatcher from '../components/BipartiteMatcher';
+import CostFlowVisualizer from '../components/CostFlowVisualizer.tsx';
 
 interface Props {
   title: string;
@@ -62,9 +62,9 @@ const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-pu
     </article>
   </main>
 
-  {widget === 'bipartite-matcher' && (
+  {widget === 'cost-flow-visualizer' && (
     <div class="post-widget">
-      <BipartiteMatcher client:only="react" />
+      <CostFlowVisualizer client:only="react" />
     </div>
   )}
 
