@@ -8,7 +8,6 @@ luogu_title: P4068 [CQOI2014]数字配对
 difficulty: 提高
 algo_tags: ['网络流', '费用流', '二分图', '数论']
 summary: 给定 n 组数字，每组有数字 a_i、数量 b_i、价值 c_i。若两个数字的比值（较大除以较小）是质数，则它们可以配对。每对配对产生 b_i × c_j + b_j × c_i 的收益。每个数字只能参与一次配对，求最大总收益。
-widget: bipartite-matcher
 ---
 
 ## 读题
@@ -79,9 +78,6 @@ widget: bipartite-matcher
 
 ![](/graphs/p4068-graph.svg)
 
-交互模拟器在下面，你可以自己调整参数看匹配过程：
-
----
 ## 代码实现
 
 ```cpp
