@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 interface Node {
   id: number;
@@ -18,7 +18,7 @@ interface Edge {
   cost: number;
 }
 
-// --- SPFA 最长路费用流实现 ---
+// --- Helpers ---
 
 function countPrimeFactors(n: number): number {
   let cnt = 0;
@@ -49,22 +49,22 @@ const SAMPLE_INPUTS = [
   { a: 15, b: 1, c: 10 },
 ];
 
-// SPFA max-cost max-flow solver
+// --- SPFA max-cost max-flow solver (fixed) ---
+
+type GraphEdge = { to: number; cap: number; cost: number; rev: number };
+
 function solveCostFlow(
   leftNodes: number[],
   rightNodes: number[],
-  edges: { from: number; to: number; weight: number }[],
+  validEdges: { from: number; to: number; weight: number }[],
   bs: number[]
 ): { totalProfit: number; augmentations: { path: number[]; flow: number; profit: number }[] } {
-  // Build graph: S=0, left=1..n_left, right=n_left+1..n_left+n_right, T=n_left+n_right+1
   const nL = leftNodes.length;
   const nR = rightNodes.length;
   const N = nL + nR + 2;
   const S = 0, T = N - 1;
 
-  // Adjacency list: {to, cap, cost, rev}
-  type E = { to: number; cap: number; cost: number; rev: number };
-  const adj: E[][] = Array.from({ length: N }, () => []);
+  const adj: GraphEdge[][] = Array.from({ length: N }, () => []);
 
   function addEdge(u: number, v: number, cap: number, cost: number) {
     adj[u].push({ to: v, cap, cost, rev: adj[v].length });
@@ -76,7 +76,7 @@ function solveCostFlow(
   // right -> T
   rightNodes.forEach((idx, i) => addEdge(nL + i + 1, T, bs[idx], 0));
   // left -> right with weight as cost
-  edges.forEach(e => {
+  validEdges.forEach(e => {
     const u = leftNodes.indexOf(e.from) + 1;
     const v = nL + rightNodes.indexOf(e.to) + 1;
     if (u > 0 && v > nL) addEdge(u, v, 1e9, e.weight);
@@ -88,7 +88,8 @@ function solveCostFlow(
 
   while (true) {
     const dist = new Array(N).fill(-INF);
-    const pre = new Array(N).fill(0); // edge index in adj[u]
+    const preNode = new Array(N).fill(-1); // which node updated dist[v]
+    const preIdx = new Array(N).fill(-1);  // which edge index in adj[preNode[v]]
     const inq = new Array(N).fill(false);
     const q: number[] = [];
 
@@ -103,7 +104,8 @@ function solveCostFlow(
         const e = adj[u][i];
         if (e.cap > 0 && dist[e.to] < dist[u] + e.cost) {
           dist[e.to] = dist[u] + e.cost;
-          pre[e.to] = i;
+          preNode[e.to] = u;
+          preIdx[e.to] = i;
           if (!inq[e.to]) {
             inq[e.to] = true;
             q.push(e.to);
@@ -114,62 +116,56 @@ function solveCostFlow(
 
     if (dist[T] <= 0) break;
 
-    // Find bottleneck
-    let flow = 1e9;
-    let cur = T;
-    while (cur !== S) {
-      const pi = pre[cur];
-      flow = Math.min(flow, adj[adj[cur][pi].to === cur ? cur : cur][pi].cap);
-      // Actually trace back properly
-      cur = adj[cur][pi].to === cur ? 0 : cur; // This is tricky, let me rebuild
-    }
-
-    // Simplified: just find min cap along path
+    // Reconstruct path
     const path: number[] = [];
+    let cur = T;
+    let flow = 1e9;
+    while (cur !== S) {
+      const pn = preNode[cur];
+      const pi = preIdx[cur];
+      flow = Math.min(flow, adj[pn][pi].cap);
+      cur = pn;
+    }
+    // path is reversed; reverse it
+    const reversedPath: number[] = [];
     cur = T;
     while (cur !== S) {
-      path.unshift(cur);
-      const pi = pre[cur];
-      const fromNode = cur;
-      // Find which node has edge to cur with index pi
-      for (let u = 0; u < N; u++) {
-        if (u !== cur && adj[u][pi]?.to === cur) {
-          cur = u;
-          flow = Math.min(flow, adj[u][pi].cap);
-          break;
-        }
-      }
+      reversedPath.unshift(cur);
+      cur = preNode[cur];
     }
-    path.unshift(S);
+    reversedPath.unshift(S);
 
     // Augment
     totalProfit += flow * dist[T];
-    augmentations.push({ path, flow, profit: totalProfit });
+    augmentations.push({ path: reversedPath, flow, profit: totalProfit });
 
-    // Update capacities
     cur = T;
     while (cur !== S) {
-      const pi = pre[cur];
-      for (let u = 0; u < N; u++) {
-        if (u !== cur && adj[u][pi]?.to === cur) {
-          adj[u][pi].cap -= flow;
-          const revIdx = adj[u][pi].rev;
-          adj[cur][revIdx].cap += flow;
-          cur = u;
-          break;
-        }
-      }
+      const pn = preNode[cur];
+      const pi = preIdx[cur];
+      adj[pn][pi].cap -= flow;
+      const revIdx = adj[pn][pi].rev;
+      adj[cur][revIdx].cap += flow;
+      cur = pn;
     }
   }
 
   return { totalProfit, augmentations };
 }
 
+// --- React Component ---
+
+interface AugStep {
+  path: number[];
+  flow: number;
+  profit: number;
+}
+
 export default function CostFlowVisualizer() {
   const [inputValues, setInputValues] = useState(SAMPLE_INPUTS.map(n => ({ a: n.a, b: n.b, c: n.c })));
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [augmentations, setAugmentations] = useState<{ path: number[]; flow: number; profit: number }[]>([]);
+  const [augmentations, setAugmentations] = useState<AugStep[]>([]);
   const [currentStep, setCurrentStep] = useState(-1);
   const [totalProfit, setTotalProfit] = useState(0);
   const [solved, setSolved] = useState(false);
@@ -183,18 +179,14 @@ export default function CostFlowVisualizer() {
     const centerY = 200;
 
     const newNodes: Node[] = [];
-    // Source
     newNodes.push({ id: 0, label: 'S', x: sourceX, y: centerY, side: 'source' });
 
     const leftIdx: number[] = [], rightIdx: number[] = [];
-
     inputValues.forEach((v, i) => {
-      const pf = countPrimeFactors(v.a);
-      if (pf % 2 === 1) leftIdx.push(i);
+      if (countPrimeFactors(v.a) % 2 === 1) leftIdx.push(i);
       else rightIdx.push(i);
     });
 
-    // Left nodes
     leftIdx.forEach((origIdx, i) => {
       newNodes.push({
         id: origIdx + 1, label: String(inputValues[origIdx].a),
@@ -203,7 +195,6 @@ export default function CostFlowVisualizer() {
       });
     });
 
-    // Right nodes
     rightIdx.forEach((origIdx, i) => {
       newNodes.push({
         id: origIdx + 1 + leftIdx.length, label: String(inputValues[origIdx].a),
@@ -212,24 +203,18 @@ export default function CostFlowVisualizer() {
       });
     });
 
-    // Sink
     newNodes.push({ id: leftIdx.length + rightIdx.length + 1, label: 'T', x: sinkX, y: centerY, side: 'sink' });
 
-    // Edges
     const newEdges: Edge[] = [];
-
-    // S -> left
     leftIdx.forEach((origIdx, i) => {
       newEdges.push({ from: 0, to: i + 1, cap: inputValues[origIdx].b, flow: 0, cost: 0 });
     });
 
-    // right -> T
     const nL = leftIdx.length;
     rightIdx.forEach((origIdx, i) => {
       newEdges.push({ from: nL + i + 1, to: newNodes.length - 1, cap: inputValues[origIdx].b, flow: 0, cost: 0 });
     });
 
-    // left -> right (valid pairs)
     leftIdx.forEach(li => {
       rightIdx.forEach(rj => {
         const g = gcd(inputValues[li].a, inputValues[rj].a);
@@ -251,8 +236,6 @@ export default function CostFlowVisualizer() {
     setTotalProfit(0);
     setSolved(false);
   }, [inputValues]);
-
-  useEffect(() => { rebuild(); }, [rebuild]);
 
   const runSPFA = useCallback(() => {
     const leftNodes: number[] = [], rightNodes: number[] = [];
@@ -276,9 +259,9 @@ export default function CostFlowVisualizer() {
       });
     });
 
-    const { totalProfit, augmentations } = solveCostFlow(leftNodes, rightNodes, validEdges, inputValues.map(v => v.b));
-    setAugmentations(augmentations);
-    setTotalProfit(totalProfit);
+    const result = solveCostFlow(leftNodes, rightNodes, validEdges, inputValues.map(v => v.b));
+    setAugmentations(result.augmentations);
+    setTotalProfit(result.totalProfit);
     setCurrentStep(0);
     setSolved(true);
   }, [inputValues]);
@@ -289,17 +272,25 @@ export default function CostFlowVisualizer() {
     setInputValues(next);
   };
 
-  const nextStep = () => setCurrentStep(s => Math.min(s + 1, augmentations.length - 1));
-  const prevStep = () => setCurrentStep(s => Math.max(s - 1, -1));
-
-  // Compute current flow state for visualization
-  const edgeFlows = edges.map(e => ({ ...e, flow: 0 }));
-  if (solved && currentStep >= 0) {
-    // Simulate flows from augmentations up to current step
-    // Simplified: show which edges have flow
-  }
-
   const svgHeight = Math.max(400, inputValues.length * 40 + 100);
+
+  // Map graph node IDs to visual node indices
+  const nodeMap = useMemo(() => {
+    const m = new Map<number, Node>();
+    nodes.forEach(n => m.set(n.id, n));
+    return m;
+  }, [nodes]);
+
+  // Highlight edges in current augmentation step
+  const highlightEdge = useMemo(() => {
+    if (!solved || currentStep < 0 || !augmentations[currentStep]) return new Set<string>();
+    const p = augmentations[currentStep].path;
+    const set = new Set<string>();
+    for (let i = 0; i < p.length - 1; i++) {
+      set.add(`${p[i]}-${p[i + 1]}`);
+    }
+    return set;
+  }, [solved, currentStep, augmentations]);
 
   return (
     <div className="widget-container">
@@ -332,8 +323,8 @@ export default function CostFlowVisualizer() {
           <button className="btn-match" onClick={runSPFA}>运行 SPFA 费用流</button>
         ) : (
           <>
-            <button className="btn-match" onClick={prevStep} disabled={currentStep < 0}>◀ 上一步</button>
-            <button className="btn-match" onClick={nextStep} disabled={currentStep >= augmentations.length - 1}>下一步 ▶</button>
+            <button className="btn-match" onClick={() => setCurrentStep(s => Math.max(s - 1, -1))} disabled={currentStep < 0}>◀ 上一步</button>
+            <button className="btn-match" onClick={() => setCurrentStep(s => Math.min(s + 1, augmentations.length - 1))} disabled={currentStep >= augmentations.length - 1}>下一步 ▶</button>
           </>
         )}
         <button className="btn-reset" onClick={rebuild}>重置</button>
@@ -344,71 +335,75 @@ export default function CostFlowVisualizer() {
       {solved && currentStep >= 0 && augmentations[currentStep] && (
         <div className="augmentation-info">
           <p><strong>增广路径：</strong>S → {augmentations[currentStep].path.slice(1, -1).join(' → ')} → T</p>
-          <p><strong>本次流量：</strong>{augmentations[currentStep].flow}，<strong>本次收益：</strong>{augmentations[currentStep].flow * augmentations[currentStep].profit}</p>
+          <p><strong>本次流量：</strong>{augmentations[currentStep].flow}</p>
           <p><strong>累计收益：</strong>{augmentations[currentStep].profit}</p>
         </div>
       )}
 
-      <div className="widget-svg-wrap">
-        <svg viewBox={`0 0 650 ${svgHeight}`} style={{ width: '100%', height: 'auto' }}>
-          {/* Edges */}
-          {edges.map((edge, i) => {
-            const fromNode = nodes[edge.from];
-            const toNode = nodes[edge.to];
-            if (!fromNode || !toNode) return null;
-            return (
-              <g key={i}>
-                <line
-                  x1={fromNode.x} y1={fromNode.y}
-                  x2={toNode.x} y2={toNode.y}
-                  stroke={edge.cost > 0 ? '#e91e63' : '#999'}
-                  strokeWidth={edge.cost > 0 ? 2 : 1}
-                  strokeOpacity={0.6}
+      {nodes.length > 0 && (
+        <div className="widget-svg-wrap">
+          <svg viewBox={`0 0 650 ${svgHeight}`} style={{ width: '100%', height: 'auto' }}>
+            {/* Edges */}
+            {edges.map((edge, i) => {
+              const fromNode = nodeMap.get(edge.from);
+              const toNode = nodeMap.get(edge.to);
+              if (!fromNode || !toNode) return null;
+              const key = `${edge.from}-${edge.to}`;
+              const isHighlighted = highlightEdge.has(key);
+              return (
+                <g key={i}>
+                  <line
+                    x1={fromNode.x} y1={fromNode.y}
+                    x2={toNode.x} y2={toNode.y}
+                    stroke={isHighlighted ? '#ff6f00' : edge.cost > 0 ? '#e91e63' : '#999'}
+                    strokeWidth={isHighlighted ? 3 : edge.cost > 0 ? 2 : 1}
+                    strokeOpacity={isHighlighted ? 1 : 0.6}
+                  />
+                  {edge.cost > 0 && (
+                    <text
+                      x={(fromNode.x + toNode.x) / 2}
+                      y={(fromNode.y + toNode.y) / 2 - 6}
+                      textAnchor="middle"
+                      className="edge-label"
+                      fill={isHighlighted ? '#ff6f00' : '#e91e63'}
+                    >
+                      w={edge.cost}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Nodes */}
+            {nodes.map(node => (
+              <g key={node.id}>
+                <circle
+                  cx={node.x} cy={node.y} r={node.side === 'source' || node.side === 'sink' ? 20 : 28}
+                  fill={
+                    node.side === 'source' ? '#ff9800' :
+                    node.side === 'sink' ? '#ff5722' :
+                    node.side === 'left' ? '#bbdefb' : '#c8e6c9'
+                  }
+                  stroke={
+                    node.side === 'source' ? '#e65100' :
+                    node.side === 'sink' ? '#bf360c' :
+                    node.side === 'left' ? '#1976d2' : '#388e3c'
+                  }
+                  strokeWidth={2}
                 />
-                {edge.cost > 0 && (
-                  <text
-                    x={(fromNode.x + toNode.x) / 2}
-                    y={(fromNode.y + toNode.y) / 2 - 6}
-                    textAnchor="middle"
-                    className="edge-label"
-                    fill="#e91e63"
-                  >
-                    w={edge.cost}
+                <text x={node.x} y={node.y - 4} textAnchor="middle" className="node-label" fontWeight="bold">
+                  {node.label}
+                </text>
+                {node.b !== undefined && (
+                  <text x={node.x} y={node.y + 12} textAnchor="middle" className="node-meta">
+                    b={node.b}, c={node.c}
                   </text>
                 )}
               </g>
-            );
-          })}
-
-          {/* Nodes */}
-          {nodes.map(node => (
-            <g key={node.id}>
-              <circle
-                cx={node.x} cy={node.y} r={node.side === 'source' || node.side === 'sink' ? 20 : 28}
-                fill={
-                  node.side === 'source' ? '#ff9800' :
-                  node.side === 'sink' ? '#ff5722' :
-                  node.side === 'left' ? '#bbdefb' : '#c8e6c9'
-                }
-                stroke={
-                  node.side === 'source' ? '#e65100' :
-                  node.side === 'sink' ? '#bf360c' :
-                  node.side === 'left' ? '#1976d2' : '#388e3c'
-                }
-                strokeWidth={2}
-              />
-              <text x={node.x} y={node.y - 4} textAnchor="middle" className="node-label" fontWeight="bold">
-                {node.label}
-              </text>
-              {node.b !== undefined && (
-                <text x={node.x} y={node.y + 12} textAnchor="middle" className="node-meta">
-                  b={node.b}, c={node.c}
-                </text>
-              )}
-            </g>
-          ))}
-        </svg>
-      </div>
+            ))}
+          </svg>
+        </div>
+      )}
 
       <div className="widget-note">
         <p>SPFA 最长路增广：每次找正权最大的增广路，沿路推流，直到没有正权路径为止。保证全局最优。</p>
