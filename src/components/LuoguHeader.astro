@@ -1,0 +1,117 @@
+---
+/**
+ * Luogu-style problem header.
+ * @prop {string} title - 题目名称
+ * @prop {string} url - 洛谷题目链接
+ * @prop {string} difficulty - 难度标签（普及- | 普及 / 提高- | 提高 / 省选- | 省选 / 省竞）
+ * @prop {string[]} tags - 算法标签
+ * @prop {string} summary - 题目梗概
+ */
+const { title, url, difficulty, tags, summary } = Astro.props;
+
+const diffColor = {
+  '普及-': '#4caf50',
+  '普及': '#4caf50',
+  '提高-': '#ff9800',
+  '提高': '#ff9800',
+  '省选-': '#f44336',
+  '省选': '#f44336',
+  '省竞': '#9c27b0',
+};
+---
+
+<div class="luogu-header">
+  <div class="header-top">
+    <h2>{title}</h2>
+    <a class="luogu-link" href={url} target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 3H3v10h10V7M9 3h4v4M7 9L13 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      洛谷原题
+    </a>
+  </div>
+
+  <div class="header-meta">
+    <span class="diff-badge" style={{ background: diffColor[difficulty] || '#999' }}>
+      {difficulty}
+    </span>
+    {tags.map(tag => (
+      <span class="tag">{tag}</span>
+    ))}
+  </div>
+
+  <div class="summary">{summary}</div>
+</div>
+
+<style>
+.luogu-header {
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.header-top h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.luogu-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.luogu-link:hover {
+  opacity: 0.7;
+}
+
+.header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.diff-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--ink-secondary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.summary {
+  font-size: 0.9rem;
+  color: var(--ink-secondary);
+  line-height: 1.6;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+</style>
