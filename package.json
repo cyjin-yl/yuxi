@@ -8,10 +8,13 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "astro": "^5.2.2",
     "@astrojs/mdx": "^4.1.0",
     "@astrojs/sitemap": "^3.3.0",
+    "astro": "^5.2.2",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.110.0"
   }
 }

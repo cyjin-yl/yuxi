@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
 export default defineConfig({
-  site: 'https://yuxi.pages.dev',
+  site: 'https://yvxi.pages.dev',
   integrations: [
     mdx({
       extendsExisting: true,
