@@ -7,98 +7,152 @@ tags: [oi, luogu, dp]
 
 ## 读题
 
-$n$ 个城市，每个城市有 $b_i$ 单位粮食和每单位价值 $c_i$。若两个城市 $i,j$ 满足 $\max(a_i/a_j, a_j/a_i)$ 是质数，则可以配对。每配对一个单位的 $i$ 和 $j$，获得价值 $c_i \times c_j$。每个城市的粮食有限，求最大总价值。
+$n$ 个城市，每个城市有 $b_i$ 单位粮食和每单位价值 $c_i$。若两个城市 $i,j$ 满足 $\max(a_i/a_j, a_j/a_i)$ 是一个质数，则它们可以交易。
 
-题目绕了一大段：$a_i$ 是 $i$ 城市的"品质"，两个城市能配对的条件是比值是质数。
+目标：在任意两座城市只交易一次的约束下，求总收益的最大值。
 
-## 从条件到结构
+### 思考过程
 
-$\max(a_i/a_j, a_j/a_i)$ 是质数意味着什么？
+从读题到最终建模，我的思路是这样的：
 
-假设 $a_i > a_j$，那么 $a_i / a_j = p$（质数），即 $a_i = a_j \times p$。
+![](/graphs/p4068-thinking.svg)
 
-换句话说：**一个数是另一个数的质数倍**。
+## 建模
 
-进一步：质数倍等价于"质因子个数相差恰好 1"。
+### 质数比值条件
 
-证明很简单：$a_i$ 的质因子分解是 $\prod q_k^{e_k}$，$a_j$ 的质因子分解是 $\prod q_k^{f_k}$。比值是质数意味着只有一个质因子的指数差为 1，其余指数相同。所以质因子总个数差恰好为 1。
+$a_i, a_j$ 满足条件当且仅当：
 
-```mermaid
-graph LR
-    A["比值是质数<br/>a_i / a_j = p"] --> B["质因子个数差恰好 1<br/>Ω(a_i) - Ω(a_j) = 1"]
-    B --> C["奇数个数 ↔ 偶数个数<br/>天然二分图"]
-```
+1. $\gcd(a_i, a_j) > 1$
+2. $a_i / \gcd(a_i, a_j)$ 和 $a_j / \gcd(a_i, a_j)$ 中恰好有一个是质数
 
-## 二分图
+### 二分图构造
 
-质因子个数差 1 $\rightarrow$ 奇数个数和偶数个数之间才有边。
+将所有数字按质因数个数奇偶性分为两组。
 
-这天然就是一张二分图：
-- 左部：质因子个数为奇数的城市
-- 右部：质因子个数为偶数的城市
+- **偶数个质因数**：$1, 4, 6, 8, 9, \ldots$
+- **奇数个质因数**：$2, 3, 5, 7, 10, \ldots$
 
-奇数侧和偶数侧之间连边，容量 $\min(b_i, b_j)$，费用 $c_i \times c_j$。
+只有奇偶性不同的两个数才能满足"比值是质数"的条件，天然构成二分图。
 
-## 费用流建模
+### 图的样例
 
-标准的二分图最大费用匹配，但每个节点有容量限制 $b_i$。
+以 $2, 3, 6, 9, 10, 15$ 为例，边权为 $b \times c$：
 
-建图方式：
-- 源点 $S$ 连向所有左部节点，容量 $b_i$，费用 0
-- 所有右部节点连向汇点 $T$，容量 $b_i$，费用 0
-- 左部 $i$ 到右部 $j$ 连边，容量 $\min(b_i, b_j)$，费用 $c_i \times c_j$
+![](/graphs/p4068-graph.svg)
 
-求最大费用最大流。
+### 费用流
 
-但这里有个约束：总价值不能为负。因为费用流求的是"最大费用"，如果费用为负的路径被增广，总价值会下降。所以我们在累计费用 `cumcost` 时，如果增广后变为负数，就要回退。
+- 源点连所有左节点，容量为 $b_i$，费用为 $0$
+- 右节点连汇点，容量为 $b_j$，费用为 $0$
+- 二分图中所有合法边，容量为 $\infty$，费用为 $b_i \times c_j + b_j \times c_i$
 
-```mermaid
-graph TD
-    S["源点 S"] -->|"容量 b_i, 费用 0"| L1["左部节点 i<br/>(奇数质因子)"]
-    S -->|"容量 b_i, 费用 0"| L2["左部节点 j<br/>(奇数质因子)"]
-    L1 -->|"容量 min(b_i,b_k),<br/>费用 c_i×c_k"| R1["右部节点 k<br/>(偶数质因子)"]
-    L2 -->|"容量 min(b_j,b_k),<br/>费用 c_j×c_k"| R1
-    R1 -->|"容量 b_k, 费用 0"| T["汇点 T"]
-```
+用 **SPFA 最长路增广** 不断找正收益路径，直到没有正权增广路为止。
 
-## SPFA 实现
-
-费用有正有负，直接用 SPFA 求最短路（实际上是找费用最大的增广路，把费用取反求最短路）。
+## 代码
 
 ```cpp
-while (true) {
-    memset(dist, 0x3f, sizeof(dist));
-    dist[S] = 0;
-    // SPFA
-    if (dist[T] == 0x3f3f3f3f) break;
-    
-    // 沿最短路增广
-    int push = augment();
-    cumcost += push * (-dist[T]); // dist 取反了
-    
-    if (cumcost < 0) {
-        cumcost -= push * (-dist[T]); // 回退
-        break;
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef long long ll;
+
+const int MAXN = 305;
+const int MAXE = 100000;
+const ll INF = 1e18;
+
+struct Edge {
+    int to, nxt, cap;
+    ll cost;
+} e[MAXE];
+
+int head[MAXN], ecnt = 1, S, T;
+int cnt[MAXN], n;
+ll a[MAXN], b[MAXN], c[MAXN];
+ll dist[MAXN], pre[MAXN];
+bool inq[MAXN];
+queue<int> q;
+
+void add(int u, int v, int cap, ll cost) {
+    e[++ecnt] = {v, head[u], cap, cost};
+    head[u] = ecnt;
+    e[++ecnt] = {u, head[v], 0, -cost};
+    head[v] = ecnt;
+}
+
+bool spfa() {
+    for (int i = 0; i <= T; i++) {
+        dist[i] = -INF;
+        pre[i] = 0;
+        inq[i] = false;
     }
+    dist[S] = 0;
+    q.push(S);
+    inq[S] = true;
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        inq[u] = false;
+        for (int i = head[u]; i; i = e[i].nxt) {
+            int v = e[i].to;
+            if (e[i].cap > 0 && dist[v] < dist[u] + e[i].cost) {
+                dist[v] = dist[u] + e[i].cost;
+                pre[v] = i;
+                if (!inq[v]) {
+                    inq[v] = true;
+                    q.push(v);
+                }
+            }
+        }
+    }
+    return dist[T] > 0;
+}
+
+int main() {
+    scanf("%d", &n);
+    S = 0, T = n + 1;
+    for (int i = 1; i <= n; i++) {
+        scanf("%lld%lld%lld", &a[i], &b[i], &c[i]);
+        for (int d = 2; d * d <= a[i]; d++) {
+            while (a[i] % d == 0) cnt[i]++, a[i] /= d;
+        }
+        if (a[i] > 1) cnt[i]++;
+    }
+    for (int i = 1; i <= n; i++) {
+        if (cnt[i] & 1)
+            add(S, i, (int)b[i], 0);
+        else
+            add(i, T, (int)b[i], 0);
+    }
+    for (int i = 1; i <= n; i++)
+        for (int j = i + 1; j <= n; j++) {
+            ll g = std::gcd(a[i], a[j]);
+            ll xi = a[i] / g, xj = a[j] / g;
+            bool ok = (xi == 1 && xj > 1) || (xj == 1 && xi > 1);
+            if (ok) {
+                ll val = b[i] * c[j] + b[j] * c[i];
+                if (cnt[i] & 1) add(i, j, 1e9, val);
+                else add(j, i, 1e9, val);
+            }
+        }
+    ll ans = 0;
+    while (spfa()) {
+        ll flow = 1e9;
+        for (int i = pre[T]; i; i = pre[e[i ^ 1].to])
+            flow = min(flow, (ll)e[i].cap);
+        ans += flow * dist[T];
+        for (int i = pre[T]; i; i = pre[e[i ^ 1].to])
+            e[i].cap -= flow, e[i ^ 1].cap += flow;
+    }
+    printf("%lld\n", ans);
+    return 0;
 }
 ```
 
-## 调试记录
+## 调试
 
-```mermaid
-graph LR
-    A["WA"] -->|"重复加边<br/>(i,j) 和 (j,i)"| B["每条边出现两次<br/>容量翻倍"]
-    B -->|"修复：只从奇数侧<br/>向偶数侧单向连边"| C["WA"]
-    C -->|"cumcost == 0 提前 break<br/>漏掉后续正费用增广路"| D["修复：只在<br/>cumcost < 0 时回退"]
-    D --> E["AC ✓ 100分"]
-```
+实际写代码时遇到了一个坑：增广路的流量上限。
 
-1. **WA：重复加边**。二重循环 `(i,j)` 和 `(j,i)` 都加了边，导致每条边出现两次，容量翻倍。修复：只从奇数侧向偶数侧连边，单向。
+![](/graphs/p4068-debug.svg)
 
-2. **WA：提前退出**。增广后 `cumcost` 为 0 时直接 `break`，漏掉了后续可能还有正费用的增广路。修复：只在 `cumcost < 0` 时回退并退出，`cumcost == 0` 继续增广。
-
-3. **最终 AC，100 分。**
-
-## 总结
-
-这道题的核心是从"比值是质数"看出"质因子个数差 1"，再看出"奇偶二分"。建模本身是标准的费用流，难点在于约束处理（不能为负）和建图细节（单向连边）。
+最终发现二分图边的容量不能设为 $\infty$，而应该设为 $\min(b_i, b_j)$。因为每座城市的粮食是有限的，超过这个量的交易没有意义。

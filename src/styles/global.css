@@ -335,6 +335,22 @@ a:hover {
   border-radius: 0.35rem;
 }
 
+/* ── Graphviz ── */
+
+.prose .graphviz-svg {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--accent-soft);
+  border-radius: 0.35rem;
+  overflow-x: auto;
+}
+
+.prose .graphviz-svg svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* ── Footer ── */
 
 .footer {

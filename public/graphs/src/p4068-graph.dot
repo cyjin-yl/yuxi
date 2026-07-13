@@ -1,0 +1,16 @@
+digraph {
+  rankdir=LR
+  node [shape=circle style=filled]
+  
+  a1 [label="2" fillcolor="#bbdefb"]
+  a2 [label="6" fillcolor="#bbdefb"]
+  a3 [label="10" fillcolor="#bbdefb"]
+  b1 [label="3" fillcolor="#c8e6c9"]
+  b2 [label="15" fillcolor="#c8e6c9"]
+  b3 [label="9" fillcolor="#c8e6c9"]
+  
+  a1 -> b1 [label="2"]
+  a2 -> b1 [label="2"]
+  a2 -> b2 [label="3"]
+  a3 -> b1 [label="2"]
+}
