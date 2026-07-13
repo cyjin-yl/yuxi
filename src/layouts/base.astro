@@ -14,5 +14,16 @@ import 'katex/dist/katex.css';
   </head>
   <body>
     <slot />
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
+      document.querySelectorAll('code.language-mermaid').forEach(async (block) => {
+        const diagram = block.textContent;
+        const svg = await mermaid.render('m' + Date.now(), diagram);
+        block.parentElement.innerHTML = svg.svg;
+        block.parentElement.classList.add('mermaid');
+      });
+    </script>
   </body>
 </html>

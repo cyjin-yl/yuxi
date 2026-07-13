@@ -11,8 +11,10 @@
     "@astrojs/mdx": "^4.1.0",
     "@astrojs/sitemap": "^3.3.0",
     "astro": "^5.2.2",
+    "mermaid": "^11.16.0",
     "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0"
+    "remark-math": "^6.0.0",
+    "remark-mermaid": "^0.2.0"
   },
   "devDependencies": {
     "wrangler": "^4.110.0"

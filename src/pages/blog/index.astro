@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/base.astro';
 import Header from '../../components/header.astro';
+import Footer from '../../components/footer.astro';
 import { getCollection } from 'astro:content';
 
 const posts = (await getCollection('blog'))
@@ -10,32 +11,33 @@ const posts = (await getCollection('blog'))
 
 <BaseLayout>
   <Header currentPath="/blog/" />
-  <main>
-    <div class="post-list">
-      <h1 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 1.5rem;">博客</h1>
+  <main class="home">
+    <div class="home-intro">
+      <h1>博客</h1>
+      <p>所有文章，按时间倒序。</p>
+    </div>
+
+    <ul class="post-list">
       {posts.map((post) => (
-        <article class="post-item">
+        <li class="post-item">
           <div class="post-item-title">
             <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
           </div>
-          <div class="post-item-date">
-            {post.data.date.toLocaleDateString('zh-CN', {
+          <div class="post-item-meta">
+            <time>{post.data.date.toLocaleDateString('zh-CN', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
-            })}
-          </div>
-          {post.data.description && <p class="post-item-desc">{post.data.description}</p>}
-          <div style="margin-top: 0.5rem;">
+            })}</time>
             {post.data.tags?.map((tag) => (
               <a href={`/tags/${tag}/`} class="tag">{tag}</a>
             ))}
           </div>
-        </article>
+          {post.data.description && <p class="post-item-desc">{post.data.description}</p>}
+        </li>
       ))}
-    </div>
+    </ul>
   </main>
-  <footer class="footer">
-    <p>余隙 · 安静地写，慢慢地读。</p>
-  </footer>
+
+  <Footer />
 </BaseLayout>
