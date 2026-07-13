@@ -1,0 +1,404 @@
+/* yuxi — 余隙的笔记本 */
+/* ink on paper. quiet, restrained, no slop. */
+
+:root {
+  --bg: #f5f2ec;
+  --bg-code: #1c1c1e;
+  --ink: #1a1a1a;
+  --ink-secondary: #5a5550;
+  --ink-muted: #8a847d;
+  --rule: #d8d3cb;
+  --accent: #7a5c43;
+  --accent-soft: #f0ebe3;
+  --tag-bg: #eae5dd;
+  --tag-ink: #6b6055;
+
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Georgia', serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
+
+  --content-width: 640px;
+  --pad-x: 1.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-serif);
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.75;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--ink);
+}
+
+/* ── Nav ── */
+
+.nav {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2rem var(--pad-x) 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.site-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.site-title:hover {
+  color: var(--accent);
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.nav-links a {
+  color: var(--ink-muted);
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--ink);
+}
+
+/* ── Home ── */
+
+.home {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 3rem var(--pad-x) 4rem;
+}
+
+.home-intro {
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.home-intro h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.home-intro p {
+  color: var(--ink-secondary);
+  font-size: 0.95rem;
+}
+
+/* ── Post list ── */
+
+.post-list {
+  list-style: none;
+}
+
+.post-item {
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.post-item:first-child {
+  padding-top: 0;
+}
+
+.post-item:last-child {
+  border-bottom: none;
+}
+
+.post-item-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.post-item-title a {
+  color: var(--ink);
+}
+
+.post-item-title a:hover {
+  color: var(--accent);
+}
+
+.post-item-meta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.post-item-desc {
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  margin-top: 0.35rem;
+  line-height: 1.6;
+}
+
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  color: var(--tag-ink);
+  background: var(--tag-bg);
+  padding: 0.1rem 0.45rem;
+  border-radius: 0.2rem;
+}
+
+/* ── Post page ── */
+
+.post-header {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2.5rem var(--pad-x) 0;
+}
+
+.post-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 0.6rem;
+}
+
+.post-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Prose ── */
+
+.prose {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 1.5rem var(--pad-x) 4rem;
+}
+
+.prose p {
+  margin-bottom: 1rem;
+}
+
+.prose h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.prose h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose ul,
+.prose ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin-bottom: 0.3rem;
+}
+
+.prose blockquote {
+  margin: 1.25rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 2px solid var(--rule);
+  color: var(--ink-secondary);
+}
+
+.prose blockquote p {
+  margin: 0;
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 2rem 0;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.88rem;
+}
+
+.prose th,
+.prose td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+}
+
+.prose th {
+  font-weight: 600;
+}
+
+.prose img {
+  max-width: 100%;
+  margin: 1.25rem 0;
+  border-radius: 0.25rem;
+}
+
+/* ── Code ── */
+
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0.08em 0.3em;
+  border-radius: 0.15em;
+}
+
+.prose pre {
+  background: var(--bg-code);
+  color: #c8c8cc;
+  padding: 1rem 1.15rem;
+  border-radius: 0.35rem;
+  overflow-x: auto;
+  margin: 1.25rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* ── Math / KaTeX ── */
+
+.prose .katex-display {
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+/* ── Mermaid ── */
+
+.prose .mermaid {
+  text-align: center;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--accent-soft);
+  border-radius: 0.35rem;
+}
+
+/* ── Footer ── */
+
+.footer {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 1.25rem var(--pad-x) 3rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+/* ── Tags index ── */
+
+.tag-index {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 2.5rem var(--pad-x) 4rem;
+}
+
+.tag-index h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag-cloud .tag-link {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--tag-ink);
+  background: var(--tag-bg);
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.2rem;
+  transition: background 0.15s ease;
+}
+
+.tag-cloud .tag-link:hover {
+  background: var(--rule);
+  color: var(--ink);
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 600px) {
+  :root {
+    --pad-x: 1rem;
+  }
+
+  .post-title {
+    font-size: 1.2rem;
+  }
+
+  .prose h1 {
+    font-size: 1.1rem;
+  }
+
+  .prose h2 {
+    font-size: 0.95rem;
+  }
+}

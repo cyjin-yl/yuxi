@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/base.astro';
+import Header from '../../components/header.astro';
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog'))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+---
+
+<BaseLayout>
+  <Header currentPath="/blog/" />
+  <main>
+    <div class="post-list">
+      <h1 style="font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: 1.5rem;">博客</h1>
+      {posts.map((post) => (
+        <article class="post-item">
+          <div class="post-item-title">
+            <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+          </div>
+          <div class="post-item-date">
+            {post.data.date.toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            })}
+          </div>
+          {post.data.description && <p class="post-item-desc">{post.data.description}</p>}
+          <div style="margin-top: 0.5rem;">
+            {post.data.tags?.map((tag) => (
+              <a href={`/tags/${tag}/`} class="tag">{tag}</a>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+  </main>
+  <footer class="footer">
+    <p>余隙 · 安静地写，慢慢地读。</p>
+  </footer>
+</BaseLayout>

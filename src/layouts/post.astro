@@ -1,0 +1,39 @@
+---
+import BaseLayout from './base.astro';
+import Header from '../components/header.astro';
+import Footer from '../components/footer.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags?: string[];
+}
+
+const { title, date, tags = [] } = Astro.props;
+---
+
+<BaseLayout>
+  <Header currentPath="/blog/" />
+
+  <header class="post-header">
+    <h1 class="post-title">{title}</h1>
+    <div class="post-meta">
+      <time>{date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })}</time>
+      {tags.map(tag => (
+        <a href={`/tags/${tag}/`} class="tag">{tag}</a>
+      ))}
+    </div>
+  </header>
+
+  <main>
+    <article class="prose">
+      <slot />
+    </article>
+  </main>
+
+  <Footer />
+</BaseLayout>

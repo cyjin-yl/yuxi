@@ -1,0 +1,15 @@
+---
+export interface Props {
+  currentPath?: string;
+}
+const { currentPath = '' } = Astro.props;
+---
+
+<header class="nav">
+  <a href="/" class="site-title">余隙</a>
+  <nav class="nav-links">
+    <a href="/blog/" class:active={currentPath.startsWith('/blog/')}>博客</a>
+    <a href="/tags/" class:active={currentPath.startsWith('/tags/')}>标签</a>
+    <a href="/about/" class:active={currentPath.startsWith('/about/')}>关于</a>
+  </nav>
+</header>
