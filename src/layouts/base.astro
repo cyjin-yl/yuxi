@@ -52,5 +52,19 @@ import 'katex/dist/katex.css';
         mermaid.run({ nodes: [el] });
       });
     </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        renderMathInElement(document.body, {
+          delimiters: [
+            { left: '$', right: '$', display: false },
+            { left: '$$', right: '$$', display: true },
+          ],
+        });
+      });
+    </script>
   </body>
 </html>
