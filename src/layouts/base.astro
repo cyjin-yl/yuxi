@@ -10,19 +10,46 @@ import 'katex/dist/katex.css';
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500,1,400&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
     <slot />
 
+    <!-- Image zoom lightbox -->
+    <div class="zoom-overlay" id="zoomOverlay">
+      <img id="zoomImage" src="" alt="" />
+    </div>
+
+    <script>
+      const overlay = document.getElementById('zoomOverlay');
+      const zoomImg = document.getElementById('zoomImage');
+
+      document.querySelectorAll('.zoomable').forEach(img => {
+        img.addEventListener('click', () => {
+          zoomImg.src = img.src;
+          zoomImg.alt = img.alt;
+          overlay.classList.add('active');
+        });
+      });
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.remove('active');
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.classList.contains('active')) {
+          overlay.classList.remove('active');
+        }
+      });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script>
       mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
-      document.querySelectorAll('code.language-mermaid').forEach(async (block) => {
-        const diagram = block.textContent;
-        const svg = await mermaid.render('m' + Date.now(), diagram);
-        block.parentElement.innerHTML = svg.svg;
-        block.parentElement.classList.add('mermaid');
+      document.querySelectorAll('.mermaid').forEach(el => {
+        mermaid.run({ nodes: [el] });
       });
     </script>
   </body>

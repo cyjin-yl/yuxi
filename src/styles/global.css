@@ -351,6 +351,42 @@ a:hover {
   height: auto;
 }
 
+/* ── Image Zoom (lightweight lightbox) ── */
+
+.prose .zoomable {
+  cursor: zoom-in;
+  transition: opacity 0.2s;
+}
+
+.prose .zoomable:hover {
+  opacity: 0.85;
+}
+
+.zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+.zoom-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.zoom-overlay img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
 /* ── Footer ── */
 
 .footer {
