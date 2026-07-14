@@ -237,15 +237,14 @@ export default function CostFlowVisualizer() {
     setSolved(false);
   }, [inputValues]);
 
-  // Auto-solve on mount: rebuild graph + run SPFA
+  // Rebuild graph and re-solve whenever inputValues change
   useEffect(() => {
     rebuild();
-    // Wait for rebuild to set nodes, then run SPFA
     const timer = setTimeout(() => {
       runSPFA();
     }, 100);
     return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [inputValues]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runSPFA = useCallback(() => {
     const leftNodes: number[] = [], rightNodes: number[] = [];
