@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 
 interface Node {
   id: number;
@@ -236,6 +236,11 @@ export default function CostFlowVisualizer() {
     setTotalProfit(0);
     setSolved(false);
   }, [inputValues]);
+
+  // Rebuild graph on mount
+  useEffect(() => {
+    rebuild();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const runSPFA = useCallback(() => {
     const leftNodes: number[] = [], rightNodes: number[] = [];
