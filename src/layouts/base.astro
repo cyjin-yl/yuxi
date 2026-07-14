@@ -72,5 +72,10 @@ import 'katex/dist/katex.css';
         });
       })();
     </script>
+
+    <script is:inline>
+      const kaomojis = ['(๑•̀ㅂ•́)و✧', '(✿◠‿◠)', 'o(*￣▽￣*)o', '(⁄ ⁄•⁄ω⁄•⁄ ⁄)', '(｡･ω･｡)', '(´｡• ᵕ •｡´)', '(๑´ㅂ`๑)', '♪(^∇^*)', '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧', '(*╯3╰)'];
+      document.querySelector('.site-title').textContent = kaomojis[Math.floor(Math.random() * kaomojis.length)];
+    </script>
   </body>
 </html>
