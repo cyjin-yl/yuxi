@@ -1,0 +1,21 @@
+digraph MCMFAlgorithm {
+  rankdir=TB;
+  size="7,9";
+  fontname="sans-serif";
+  node [fontname="sans-serif", fontsize=10];
+  edge [fontname="sans-serif", fontsize=9];
+
+  start [label="开始", fillcolor="#4CAF50", fontcolor=white, style=filled, shape=box];
+  spfa [label="SPFA 在残量网络\n上求最长路", fillcolor="#E3F2FD", style=filled];
+  haspath [label="dist[T]>0?", shape=diamond, fillcolor="#FFF9C4", style=filled];
+  findflow [label="沿 pre[] 回溯\nflow = min(各边残量)", fillcolor="#E8F5E9", style=filled];
+  augment [label="沿路径增广:\n正向边 cap -= flow\n反向边 cap += flow\nans += flow × dist[T]", fillcolor="#C8E6C9", style=filled];
+  output [label="输出 ans", fillcolor="#FF5722", fontcolor=white, style=filled, shape=box];
+
+  start -> spfa;
+  spfa -> haspath;
+  haspath -> findflow [label="是"];
+  findflow -> augment;
+  augment -> spfa;
+  haspath -> output [label="否"];
+}

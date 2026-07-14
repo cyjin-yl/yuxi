@@ -1,0 +1,21 @@
+digraph SPFAAlgorithm {
+  rankdir=TB;
+  size="7,9";
+  fontname="sans-serif";
+  node [fontname="sans-serif", fontsize=10];
+  edge [fontname="sans-serif", fontsize=9];
+
+  start [label="开始", fillcolor="#4CAF50", fontcolor=white, style=filled, shape=box];
+  init [label="dist[s]=0, 其余=∞", fillcolor="#E3F2FD", style=filled];
+  enqueue [label="s 入队, inq[s]=true", fillcolor="#E3F2FD", style=filled];
+  empty [label="队列空?", shape=diamond, fillcolor="#FFF9C4", style=filled];
+  dequeue [label="u = 队首出队, inq[u]=false", fillcolor="#E3F2FD", style=filled];
+  relax [label="遍历 u 的出边 (u,v):\n若 cap>0 且 dist[v]>dist[u]+w:\n  dist[v]=dist[u]+w, pre[v]=边\n  若 !inq[v] 则 v 入队", fillcolor="#E8F5E9", style=filled];
+  end [label="算法结束", fillcolor="#FF5722", fontcolor=white, style=filled, shape=box];
+
+  start -> init -> enqueue -> empty;
+  empty -> dequeue [label="否"];
+  dequeue -> relax;
+  relax -> empty [label="继续"];
+  empty -> end [label="是"];
+}
