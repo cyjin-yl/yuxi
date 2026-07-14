@@ -56,11 +56,23 @@ const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-pu
     </div>
   </header>
 
-  <main>
-    <article class="prose">
-      <slot />
-    </article>
-  </main>
+  <div class="post-body-layout">
+    <main>
+      <article class="prose" id="post-content">
+        <slot />
+      </article>
+    </main>
+
+    <aside class="toc-sidebar" id="toc-sidebar">
+      <button class="toc-toggle" aria-label="关闭目录">✕</button>
+      <div class="toc-header">
+        <h3>目录</h3>
+      </div>
+      <nav class="toc-list" id="toc-list"></nav>
+    </aside>
+
+    <button class="toc-mobile-toggle" aria-label="显示目录">☰</button>
+  </div>
 
   {widget === 'cost-flow-visualizer' && (
     <div class="post-widget">
@@ -68,5 +80,79 @@ const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-pu
     </div>
   )}
 
+  <div class="self-review">
+    <h3>Self-Review</h3>
+    <div class="self-review-content">
+      <p>这篇文章写完了。虽然其中可能有几处笔误、公式排版翻车、或者代码跑不通——但这些都是"特色"。</p>
+      <p>写作过程：读题 5 分钟，建图 10 分钟，写代码 30 分钟，调 Bug 2 小时，写博客 3 天（其中两天在查 KaTeX 转义）。</p>
+      <p>如果你看到这篇博客有任何不对劲的地方，那一定是作者太困了。建议读者自行验证代码，不要盲目相信一个凌晨还在调费用的程序媛。</p>
+      <p class="self-review-sign">—— 余隙，写于某个深夜 🌙</p>
+    </div>
+  </div>
+
   <Footer />
+
+  <script is:inline>
+    // Auto-generate TOC from h2/h3 headings in .prose
+    (function() {
+      function buildTOC() {
+        const prose = document.getElementById('post-content');
+        const tocList = document.getElementById('toc-list');
+        if (!prose || !tocList) return;
+
+        const headings = prose.querySelectorAll('h2, h3');
+        if (headings.length === 0) return;
+
+        let html = '<ol>';
+        headings.forEach((h, i) => {
+          const id = 'heading-' + i;
+          h.id = id;
+          const indent = h.tagName === 'H3' ? 'style="padding-left:1rem"' : '';
+          const level = h.tagName === 'H3' ? '<li class="toc-h3"' : '<li';
+          html += `<${level} ${indent}><a href="#${id}">${h.textContent}</a></li>`;
+        });
+        html += '</ol>';
+        tocList.innerHTML = html;
+      }
+
+      function initTOC() {
+        buildTOC();
+
+        const tocSidebar = document.getElementById('toc-sidebar');
+        const toggle = document.querySelector('.toc-mobile-toggle');
+        const closeBtn = document.querySelector('.toc-toggle');
+
+        if (toggle) {
+          toggle.addEventListener('click', () => {
+            tocSidebar.classList.toggle('open');
+          });
+        }
+        if (closeBtn) {
+          closeBtn.addEventListener('click', () => {
+            tocSidebar.classList.remove('open');
+          });
+        }
+
+        // Smooth scroll for TOC links
+        document.querySelectorAll('.toc-list a').forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = document.querySelector(link.getAttribute('href'));
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              history.pushState(null, '', link.getAttribute('href'));
+            }
+            // Close mobile TOC
+            tocSidebar.classList.remove('open');
+          });
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTOC);
+      } else {
+        initTOC();
+      }
+    })();
+  </script>
 </BaseLayout>
