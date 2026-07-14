@@ -8,6 +8,7 @@
   --ink-secondary: #5a5550;
   --ink-muted: #8a847d;
   --rule: #d8d3cb;
+  --border: #d8d3cb;
   --accent: #7a5c43;
   --accent-soft: #f0ebe3;
   --tag-bg: #eae5dd;
@@ -208,6 +209,12 @@ a:hover {
   max-width: var(--content-width);
   margin: 0 auto;
   padding: 1.5rem var(--pad-x) 4rem;
+}
+
+.post-widget {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 var(--pad-x);
 }
 
 .prose p {
@@ -473,6 +480,8 @@ a:hover {
   padding: 1.25rem;
   margin: 2rem 0;
   font-family: var(--font-sans);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .widget-header h3 {
@@ -572,6 +581,8 @@ a:hover {
 }
 
 .widget-svg-wrap svg {
+  width: 100%;
+  height: auto;
   max-width: 100%;
 }
 

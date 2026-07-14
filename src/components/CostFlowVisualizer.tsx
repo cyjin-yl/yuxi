@@ -349,7 +349,7 @@ export default function CostFlowVisualizer() {
 
       {nodes.length > 0 && (
         <div className="widget-svg-wrap">
-          <svg viewBox={`0 0 650 ${svgHeight}`} style={{ width: '100%', height: 'auto' }}>
+          <svg viewBox={`0 0 650 ${svgHeight}`}>
             {/* Edges */}
             {edges.map((edge, i) => {
               const fromNode = nodeMap.get(edge.from);
