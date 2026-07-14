@@ -79,7 +79,13 @@ widget: cost-flow-visualizer
 
 以样例数据为例，建图如下：
 
-![](/graphs/p4068-graph.svg)
+![](/graphs/p4068-bipartite.svg)
+
+*样例建图：数字按质因数个数奇偶性分为左/右两组，源点 S 连向左组，右组合连向汇点 T，交叉边代表合法配对。*
+
+![](/graphs/p4068-augment.svg)
+
+*一次增广路示例：SPFA 找到 S→L₂→R₁→T 这条路径（橙色高亮），沿路推流，更新残量网络。*
 
 交互模拟器在下面，你可以自己调整参数看匹配过程：
 
@@ -210,6 +216,12 @@ int main() {
     return 0;
 }
 ```
+
+## SPFA 费用流执行流程
+
+![](/graphs/p4068-spfa-flow.svg)
+
+*SPFA 最长路费用流执行流程：每次 SPFA 找最长增广路 → 有正权路径就沿路增广 → 直到无正权路径为止。*
 
 ## 调试记录
 

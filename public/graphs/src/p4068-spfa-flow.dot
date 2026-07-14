@@ -1,0 +1,24 @@
+digraph SPFAFlow {
+  rankdir=TB;
+  size="8,10";
+  fontname="sans-serif";
+  node [fontname="sans-serif", fontsize=11];
+  edge [fontname="sans-serif", fontsize=10];
+
+  start [label="开 始", fillcolor="#4CAF50", fontcolor=white, style=filled, shape=box];
+  spfa [label="SPFA 找最长增广路", fillcolor="#E3F2FD", style=filled];
+  relax [label="取出队首, 松弛邻边", fillcolor="#E3F2FD", style=filled];
+  empty [label="队列空?", shape=diamond, fillcolor="#FFF9C4", style=filled];
+  pospath [label="dist[T]>0 ?", shape=diamond, fillcolor="#FFF9C4", style=filled];
+  augment [label="沿路径增广", fillcolor="#C8E6C9", style=filled];
+  output [label="输出答案", fillcolor="#FF5722", fontcolor=white, style=filled, shape=box];
+
+  start -> spfa;
+  spfa -> relax;
+  relax -> empty;
+  empty -> relax [label="否"];
+  empty -> pospath [label="是"];
+  pospath -> augment [label="是"];
+  pospath -> output [label="否"];
+  augment -> spfa;
+}

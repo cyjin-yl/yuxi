@@ -1,0 +1,35 @@
+digraph BipartiteExample {
+  rankdir=TB;
+  size="8,6";
+  fontname="sans-serif";
+  node [fontname="sans-serif", shape=ellipse, style=filled, fontsize=12];
+  edge [fontname="sans-serif", fontsize=10];
+
+  // Source and sink
+  S [label="S", fillcolor="#FF9800", fontcolor=white];
+  T [label="T", fillcolor="#FF5722", fontcolor=white];
+
+  // Left partition (odd prime factors)
+  L1 [label="2\n(奇数个质因数)", fillcolor="#BBDEEB"];
+  L2 [label="6\n(奇数个质因数)", fillcolor="#BBDEEB"];
+  L3 [label="3\n(奇数个质因数)", fillcolor="#BBDEEB"];
+
+  // Right partition (even prime factors)
+  R1 [label="4\n(偶数个质因数)", fillcolor="#C8E6C9"];
+  R2 [label="9\n(偶数个质因数)", fillcolor="#C8E6C9"];
+  R3 [label="10\n(偶数个质因数)", fillcolor="#C8E6C9"];
+
+  // Edges
+  S -> L1 [label="cap=3", color="#999"];
+  S -> L2 [label="cap=4", color="#999"];
+  S -> L3 [label="cap=5", color="#999"];
+  
+  R1 -> T [label="cap=2", color="#999"];
+  R2 -> T [label="cap=1", color="#999"];
+  R3 -> T [label="cap=3", color="#999"];
+
+  // Cross edges (valid pairs)
+  L1 -> R1 [label="w=...", color="#E91E63", penwidth=2];
+  L2 -> R3 [label="w=...", color="#E91E63", penwidth=2];
+  L3 -> R2 [label="w=...", color="#E91E63", penwidth=2];
+}

@@ -292,6 +292,12 @@ export default function CostFlowVisualizer() {
     return set;
   }, [solved, currentStep, augmentations]);
 
+  // Highlight nodes in current augmentation path
+  const highlightNode = useMemo(() => {
+    if (!solved || currentStep < 0 || !augmentations[currentStep]) return new Set<number>();
+    return new Set(augmentations[currentStep].path);
+  }, [solved, currentStep, augmentations]);
+
   return (
     <div className="widget-container">
       <div className="widget-header">
@@ -334,9 +340,10 @@ export default function CostFlowVisualizer() {
 
       {solved && currentStep >= 0 && augmentations[currentStep] && (
         <div className="augmentation-info">
-          <p><strong>增广路径：</strong>S → {augmentations[currentStep].path.slice(1, -1).join(' → ')} → T</p>
+          <p><strong>🔍 当前增广路径：</strong>S → {augmentations[currentStep].path.slice(1, -1).join(' → ')} → T</p>
           <p><strong>本次流量：</strong>{augmentations[currentStep].flow}</p>
           <p><strong>累计收益：</strong>{augmentations[currentStep].profit}</p>
+          <p className="step-hint">图中 <span style={{color:'#ff6f00', fontWeight:'bold'}}>橙色高亮</span> 的边和节点就是当前这条增广路</p>
         </div>
       )}
 
@@ -375,22 +382,29 @@ export default function CostFlowVisualizer() {
             })}
 
             {/* Nodes */}
-            {nodes.map(node => (
+            {nodes.map(node => {
+              const isHighlighted = highlightNode.has(node.id);
+              return (
               <g key={node.id}>
                 <circle
                   cx={node.x} cy={node.y} r={node.side === 'source' || node.side === 'sink' ? 20 : 28}
                   fill={
+                    isHighlighted ? '#FFB74D' :
                     node.side === 'source' ? '#ff9800' :
                     node.side === 'sink' ? '#ff5722' :
                     node.side === 'left' ? '#bbdefb' : '#c8e6c9'
                   }
                   stroke={
+                    isHighlighted ? '#ff6f00' :
                     node.side === 'source' ? '#e65100' :
                     node.side === 'sink' ? '#bf360c' :
                     node.side === 'left' ? '#1976d2' : '#388e3c'
                   }
-                  strokeWidth={2}
+                  strokeWidth={isHighlighted ? 3 : 2}
                 />
+                {isHighlighted && (
+                  <circle cx={node.x} cy={node.y} r={32} fill="none" stroke="#ff6f00" strokeWidth={2} strokeDasharray="4,4" opacity={0.6} />
+                )}
                 <text x={node.x} y={node.y - 4} textAnchor="middle" className="node-label" fontWeight="bold">
                   {node.label}
                 </text>
@@ -400,7 +414,8 @@ export default function CostFlowVisualizer() {
                   </text>
                 )}
               </g>
-            ))}
+              );
+            })}
           </svg>
         </div>
       )}

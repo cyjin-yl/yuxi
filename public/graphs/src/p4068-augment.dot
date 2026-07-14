@@ -1,0 +1,37 @@
+digraph AugmentationStep {
+  rankdir=TB;
+  size="10,7";
+  fontname="sans-serif";
+  node [fontname="sans-serif", shape=ellipse, style=filled, fontsize=12];
+  edge [fontname="sans-serif", fontsize=10];
+
+  // Nodes
+  S [label="S", fillcolor="#FF9800", fontcolor=white];
+  L1 [label="L₁", fillcolor="#BBDEEB"];
+  L2 [label="L₂", fillcolor="#BBDEEB"];
+  R1 [label="R₁", fillcolor="#C8E6C9"];
+  R2 [label="R₂", fillcolor="#C8E6C9"];
+  T [label="T", fillcolor="#FF5722", fontcolor=white];
+
+  // All edges (gray)
+  S -> L1 [color="#999", label="cap=3"];
+  S -> L2 [color="#999", label="cap=4"];
+  L1 -> R1 [color="#999", label="w=5"];
+  L1 -> R2 [color="#999", label="w=3"];
+  L2 -> R1 [color="#999", label="w=7"];
+  L2 -> R2 [color="#999", label="w=2"];
+  R1 -> T [color="#999", label="cap=2"];
+  R2 -> T [color="#999", label="cap=1"];
+
+  // Augmenting path (orange, bold)
+  {edge [color="#FF6F00", penwidth=3, style=bold];
+    S -> L2;
+    L2 -> R1;
+    R1 -> T;
+  }
+
+  // Highlight path nodes
+  {node [fillcolor="#FFB74D"];
+    L2; R1;
+  }
+}
