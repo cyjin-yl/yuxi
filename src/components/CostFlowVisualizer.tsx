@@ -88,8 +88,8 @@ function solveCostFlow(
 
   while (true) {
     const dist = new Array(N).fill(-INF);
-    const preNode = new Array(N).fill(-1); // which node updated dist[v]
-    const preIdx = new Array(N).fill(-1);  // which edge index in adj[preNode[v]]
+    const preNode = new Array(N).fill(-1);
+    const preIdx = new Array(N).fill(-1);
     const inq = new Array(N).fill(false);
     const q: number[] = [];
 
@@ -116,7 +116,6 @@ function solveCostFlow(
 
     if (dist[T] <= 0) break;
 
-    // Reconstruct path
     const path: number[] = [];
     let cur = T;
     let flow = 1e9;
@@ -126,7 +125,6 @@ function solveCostFlow(
       flow = Math.min(flow, adj[pn][pi].cap);
       cur = pn;
     }
-    // path is reversed; reverse it
     const reversedPath: number[] = [];
     cur = T;
     while (cur !== S) {
@@ -135,7 +133,6 @@ function solveCostFlow(
     }
     reversedPath.unshift(S);
 
-    // Augment
     totalProfit += flow * dist[T];
     augmentations.push({ path: reversedPath, flow, profit: totalProfit });
 
@@ -237,14 +234,13 @@ export default function CostFlowVisualizer() {
     setSolved(false);
   }, [inputValues]);
 
-  // Rebuild graph and re-solve whenever inputValues change
   useEffect(() => {
     rebuild();
     const timer = setTimeout(() => {
       runSPFA();
     }, 100);
     return () => clearTimeout(timer);
-  }, [inputValues]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [inputValues]);
 
   const runSPFA = useCallback(() => {
     const leftNodes: number[] = [], rightNodes: number[] = [];
@@ -281,16 +277,24 @@ export default function CostFlowVisualizer() {
     setInputValues(next);
   };
 
+  const addRow = () => {
+    setInputValues([...inputValues, { a: 1, b: 1, c: 1 }]);
+  };
+
+  const removeRow = (idx: number) => {
+    if (inputValues.length <= 1) return;
+    const next = inputValues.filter((_, i) => i !== idx);
+    setInputValues(next);
+  };
+
   const svgHeight = Math.max(400, inputValues.length * 40 + 100);
 
-  // Map graph node IDs to visual node indices
   const nodeMap = useMemo(() => {
     const m = new Map<number, Node>();
     nodes.forEach(n => m.set(n.id, n));
     return m;
   }, [nodes]);
 
-  // Highlight edges in current augmentation step
   const highlightEdge = useMemo(() => {
     if (!solved || currentStep < 0 || !augmentations[currentStep]) return new Set<string>();
     const p = augmentations[currentStep].path;
@@ -301,7 +305,6 @@ export default function CostFlowVisualizer() {
     return set;
   }, [solved, currentStep, augmentations]);
 
-  // Highlight nodes in current augmentation path
   const highlightNode = useMemo(() => {
     if (!solved || currentStep < 0 || !augmentations[currentStep]) return new Set<number>();
     return new Set(augmentations[currentStep].path);
@@ -311,13 +314,13 @@ export default function CostFlowVisualizer() {
     <div className="widget-container">
       <div className="widget-header">
         <h3>SPFA 最长路费用流模拟器</h3>
-        <p className="widget-subtitle">逐步查看增广路过程</p>
+        <p className="widget-subtitle">逐步查看增广路过程，可自由增删改节点</p>
       </div>
 
       <div className="widget-inputs">
         <table>
           <thead>
-            <tr><th>编号</th><th>a (数字)</th><th>b (粮食)</th><th>c (价值)</th><th>质因数个数</th></tr>
+            <tr><th>编号</th><th>a (数字)</th><th>b (数量)</th><th>c (价值)</th><th>质因数个数</th><th>操作</th></tr>
           </thead>
           <tbody>
             {inputValues.map((v, i) => (
@@ -327,10 +330,16 @@ export default function CostFlowVisualizer() {
                 <td><input type="number" value={v.b} onChange={e => updateInput(i, 'b', Number(e.target.value))} min={0} className="inp" /></td>
                 <td><input type="number" value={v.c} onChange={e => updateInput(i, 'c', Number(e.target.value))} min={0} className="inp" /></td>
                 <td className="pf-count">{countPrimeFactors(v.a)}</td>
+                <td>
+                  <button className="btn-remove" onClick={() => removeRow(i)} disabled={inputValues.length <= 1} title="删除此行">✕</button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <button className="btn-add" onClick={addRow} style={{marginTop: '0.5rem', width: '100%', padding: '0.4rem', fontSize: '0.8rem', cursor: 'pointer', background: 'var(--accent-soft)', border: '1px dashed var(--border)', borderRadius: '0.35rem', color: 'var(--ink-secondary)'}}>
+          + 添加一行
+        </button>
       </div>
 
       <div className="widget-controls">
@@ -344,7 +353,7 @@ export default function CostFlowVisualizer() {
         )}
         <button className="btn-reset" onClick={rebuild}>重置</button>
         <span className="profit">总收益: <strong>{totalProfit}</strong></span>
-        {solved && <span className="step-label">第 {currentStep + 1}/{augmentations.length} 次增广</span>}
+        {solved && <span className="step-label">正在查看: 第 {currentStep + 1} 条 / 共 {augmentations.length} 条增广路</span>}
       </div>
 
       {solved && currentStep >= 0 && augmentations[currentStep] && (
@@ -359,7 +368,6 @@ export default function CostFlowVisualizer() {
       {nodes.length > 0 && (
         <div className="widget-svg-wrap">
           <svg viewBox={`0 0 650 ${svgHeight}`}>
-            {/* Edges */}
             {edges.map((edge, i) => {
               const fromNode = nodeMap.get(edge.from);
               const toNode = nodeMap.get(edge.to);
@@ -390,7 +398,6 @@ export default function CostFlowVisualizer() {
               );
             })}
 
-            {/* Nodes */}
             {nodes.map(node => {
               const isHighlighted = highlightNode.has(node.id);
               return (
@@ -435,3 +442,4 @@ export default function CostFlowVisualizer() {
     </div>
   );
 }
+

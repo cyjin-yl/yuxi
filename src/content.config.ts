@@ -17,6 +17,7 @@ export const collections = {
       algo_tags: z.array(z.string()).optional(),
       summary: z.string().optional(),
       widget: z.string().optional(),
+      self_review: z.string().optional(),
     }),
   }),
 };

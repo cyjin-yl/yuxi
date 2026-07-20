@@ -1,0 +1,187 @@
+---
+title: P3366 最小生成树
+description: 洛谷 P3366。Kruskal / Prim 双算法详解，并查集与优先队列实现。
+date: 2026-07-20
+tags: [oi, luogu, graph]
+luogu_url: https://www.luogu.com.cn/problem/P3366
+luogu_title: P3366 【模板】最小生成树
+difficulty: puji
+algo_tags: ['图论', '最小生成树', 'Kruskal', 'Prim', '并查集']
+summary: 给定 n 个顶点和 m 条边，求最小生成树的边权和。
+widget: kruskal-simulator
+self_review: |
+  Kruskal 是最经典的最小生成树算法，但这篇写的过程中还是踩了不少坑——连通性检查、long long 溢出这些细节，模板题也容易翻车。
+  交互模拟器做了，但边数太多的时候性能可能会有问题，后续考虑加个节流。
+---
+
+## 题目描述
+
+给定 $n$ 个顶点和 $m$ 条边，每条边有正权值 $w_i$。求一棵生成树，使得所有边权之和最小。若图不连通则输出 "orz"。
+
+## 读题分析
+
+这道题是经典的图论模板题。读题后需要回答一个核心问题：**该用什么算法？**
+
+最小生成树（Minimum Spanning Tree, MST）有两个经典算法：**Kruskal** 和 **Prim**。两者都能正确求解，但思路完全不同。
+
+### Kruskal vs. Prim
+
+**Kruskal**：按边权从小到大排序，贪心地选边，用并查集判断是否成环。
+
+适合**稀疏图**（$m$ 不太大），实现简洁。
+
+**Prim**：从一个点出发，每次选离当前生成树最近的未访问点加入。用优先队列优化后可达 $O(m \log n)$。
+
+适合**稠密图**（$m$ 很大），但实现稍复杂。
+
+本题中 $n \le 50000, m \le 100000$，属于稀疏图，Kruskal 是更自然的选择。
+
+## 算法分析
+
+### Kruskal 算法
+
+Kruskal 的核心思想是**贪心 + 并查集**：将所有边按权值从小到大排序，依次考虑每条边 $(u, v)$，若 $u$ 和 $v$ 不在同一个连通分量中（用并查集判断），就将这条边加入生成树；否则跳过（加它会形成环）。
+
+<figure>
+  ![](/graphs/kruskal-algorithm.svg)
+  <figcaption>图 1：Kruskal 算法执行流程。详见 [最小生成树](https://oi-wiki.org/graph/mst/)。</figcaption>
+</figure>
+
+**正确性证明：** Kruskal 的正确性基于切分定理（Cut Property）：对于图的任意切分，横跨该切分的最小权边一定属于最小生成树。Kruskal 每次选择当前最小权边，等价于在某个切分上选择了最小权边，因此贪心策略是正确的。
+
+**复杂度：** 排序 $O(m \log m)$，并查集操作 $O(\alpha(n))$，总复杂度 $O(m \log m)$。
+
+### Prim 算法
+
+Prim 的核心思想是**从某个起点出发，每次将离当前生成树最近的未访问节点加入**。用优先队列优化后，每次取出最小权边只需 $O(\log n)$。
+
+<figure>
+  ![](/graphs/prim-algorithm.svg)
+  <figcaption>图 2：Prim 算法执行流程（优先队列版）。详见 [最小生成树](https://oi-wiki.org/graph/mst/)。</figcaption>
+</figure>
+
+**复杂度：** 优先队列版 $O(m \log n)$，邻接矩阵版 $O(n^2)$。
+
+### 并查集
+
+Kruskal 依赖并查集判断两个点是否已在同一连通分量。并查集支持两个操作：
+
+1. **查找（find）**：返回某元素所在集合的代表元。路径压缩后均摊 $O(\alpha(n))$。
+2. **合并（union）**：将两个集合合并。按秩合并可保证效率。
+
+**实现要点：** 路径压缩 + 按秩合并是标准做法，两者配合可达近乎线性的效率。
+
+## 本题建模
+
+以样例数据为例（$n=4, m=5$），建图如下：
+
+<figure>
+  ![](/graphs/p3366-graph.svg)
+  <figcaption>图 3：样例初始图：4 个顶点，5 条边。每条边标注权值。</figcaption>
+</figure>
+
+Kruskal 按权值排序后依次处理：
+
+<figure>
+  ![](/graphs/p3366-kruskal-step.svg)
+  <figcaption>图 4：Kruskal 逐步执行：先选权值最小的边，用并查集判断是否成环，依次加入生成树。</figcaption>
+</figure>
+
+## 代码实现
+
+```cpp
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 50005;
+const int MAXM = 100005;
+
+typedef long long ll;
+
+struct Edge {
+    int u, v, w;
+    bool operator<(const Edge& o) const { return w < o.w; }
+} e[MAXM];
+
+int fa[MAXN];
+
+int find(int x) {
+    return fa[x] == x ? x : fa[x] = find(fa[x]);
+}
+
+void unite(int x, int y) {
+    int rx = find(x), ry = find(y);
+    if (rx != ry) fa[rx] = ry;
+}
+
+int main() {
+    int n, m;
+    scanf("%d%d", &n, &m);
+
+    for (int i = 1; i <= n; i++) fa[i] = i;
+    for (int i = 0; i < m; i++)
+        scanf("%d%d%d", &e[i].u, &e[i].v, &e[i].w);
+
+    sort(e, e + m);
+
+    int cnt = 0;
+    ll ans = 0;
+    for (int i = 0; i < m; i++) {
+        if (find(e[i].u) != find(e[i].v)) {
+            unite(e[i].u, e[i].v);
+            ans += e[i].w;
+            if (++cnt == n - 1) break;
+        }
+    }
+
+    if (cnt < n - 1) printf("orz\n");
+    else printf("%lld\n", ans);
+    return 0;
+}
+```
+
+## Kruskal 执行流程
+
+<figure>
+  ![](/graphs/p3366-kruskal-flow.svg)
+  <figcaption>图 5：Kruskal 完整执行流程：边排序 → 逐条处理 → 并查集判环 → 收集答案。</figcaption>
+</figure>
+
+## 调试记录
+
+实际写代码时踩了几个坑，值得记录：
+
+### 坑一：不连通图的判断
+
+题目要求：若图不连通，输出 "orz"。第一版代码没有检查生成树的边数是否等于 $n-1$，导致不连通图也能输出答案。
+
+**修复：** 记录加入的边数 `cnt`，最后判断 `cnt < n - 1` 时输出 "orz"。
+
+### 坑二：并查集初始化
+
+忘记初始化 `fa[i] = i`，导致第一次 `find` 结果错误。
+
+**修复：** 在读入后、处理前初始化并查集。
+
+### 坑三：`long long` 溢出
+
+边权求和用 `int`，但 $m$ 较大时总和可能溢出。
+
+**修复：** 答案变量用 `long long`。
+
+## 复杂度分析
+
+- 边排序：$O(m \log m)$
+- 并查集操作：$O(m \cdot \alpha(n))$，其中 $\alpha$ 是反阿克曼函数
+
+总时间复杂度 $O(m \log m)$，空间 $O(n + m)$。
+
+## 总结
+
+这道题的关键在于：
+
+1. **贪心策略**——按权值从小到大选边，永远选当前最小的合法边
+2. **并查集判环**——快速判断两个点是否已在同一连通分量
+3. **连通性检查**——生成树边数必须等于 $n-1$，否则图不连通
+
+最小生成树是图论中最经典的模板之一，Kruskal 实现简洁、效率足够，是竞赛中的首选。

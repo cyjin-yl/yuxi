@@ -3,76 +3,96 @@ import BaseLayout from './base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
 import CostFlowVisualizer from '../components/CostFlowVisualizer.tsx';
+import KruskalSimulator from '../components/KruskalSimulator.tsx';
 
-interface Props {
-  title: string;
-  date: Date;
-  tags?: string[];
-  luogu_url?: string;
-  luogu_title?: string;
-  difficulty?: string;
-  algo_tags?: string[];
-  summary?: string;
-  widget?: string;
-}
+const {
+  title,
+  date,
+  tags = [],
+  luogu_url,
+  luogu_title,
+  difficulty,
+  algo_tags,
+  summary,
+  widget,
+  self_review,
+} = Astro.props;
 
-const { title, date, tags = [], luogu_url, luogu_title, difficulty, algo_tags, summary, widget } = Astro.props;
-
-const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-puji'
-  : difficulty === '提高' || difficulty === '提高-' ? 'diff-tigao'
-  : difficulty === '省选' || difficulty === '省选-' || difficulty === '省竞' ? 'diff-shengxuan'
-  : 'diff-unknown';
+// We'll build TOC on the client side since headings come from <slot/>
+const hasTOC = true;
 ---
 
-<BaseLayout>
-  <Header currentPath="/blog/" />
+<BaseLayout title={title} tags={tags} date={date}>
+  <Header />
 
   <header class="post-header">
     <h1 class="post-title">{title}</h1>
-
-    {luogu_url && luogu_title && (
-      <div class="luogu-header">
-        <div class="luogu-title-row">
-          <span class="luogu-problem-name">{luogu_title}</span>
-          <a href={luogu_url} target="_blank" rel="noopener" class="luogu-link">洛谷原题 ↗</a>
-        </div>
-        <div class="luogu-meta">
-          {difficulty && <span class={`luogu-diff ${diffClass}`}>{difficulty}</span>}
-          {algo_tags?.map(tag => <span class="luogu-tag">{tag}</span>)}
-        </div>
-        {summary && <p class="luogu-summary">{summary}</p>}
-      </div>
-    )}
-
     <div class="post-meta">
-      <time>{date.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })}</time>
-      {tags.map(tag => (
-        <a href={`/tags/${tag}/`} class="tag">{tag}</a>
+      <time datetime={date.toISOString()}>{date.toLocaleDateString('zh-CN')}</time>
+      {tags.map((tag: string) => (
+        <span class="tag">{tag}</span>
       ))}
     </div>
   </header>
 
-  <div class="post-body-layout">
-    <main>
-      <article class="prose" id="post-content">
-        <slot />
-      </article>
-    </main>
-
-    <aside class="toc-sidebar" id="toc-sidebar">
-      <button class="toc-toggle" aria-label="关闭目录">✕</button>
-      <div class="toc-header">
-        <h3>目录</h3>
+  {luogu_url && (
+    <div class="post-widget">
+      <div class="luogu-header">
+        <div class="luogu-title-row">
+          <span class="luogu-problem-name">{luogu_title || title}</span>
+          <a class="luogu-link" href={luogu_url} target="_blank" rel="noopener noreferrer">
+            洛谷原题 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="10 9 15 4 21 4 21 10 16 10"/><line x1="15" y1="4" x2="15" y2="4.01"/></svg>
+          </a>
+        </div>
+        <div class="luogu-meta">
+          {difficulty && <span class={`luogu-diff diff-${difficulty}`}>{difficulty === 'puji' ? '普及' : difficulty === 'tigao' ? '提高' : difficulty === 'shengxuan' ? '省选' : '未知'}</span>}
+          {algo_tags?.map((tag: string) => (
+            <span class="luogu-tag">{tag}</span>
+          ))}
+        </div>
+        <p class="luogu-summary">{summary}</p>
       </div>
-      <nav class="toc-list" id="toc-list"></nav>
-    </aside>
+    </div>
+  )}
 
-    <button class="toc-mobile-toggle" aria-label="显示目录">☰</button>
+  <div class="post-wrapper">
+    <article class="prose" id="post-content">
+      <slot />
+    </article>
+
+    {hasTOC && (
+      <div class="toc-sticky-wrapper">
+        <aside class="toc-sidebar" id="toc-sidebar">
+          <div class="toc-header">
+            <h3>目录</h3>
+            <button class="toc-toggle" aria-label="关闭目录">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div class="toc-scroll">
+            <nav class="toc-list" id="toc-list">
+              <!-- Built by JS -->
+            </nav>
+          </div>
+        </aside>
+      </div>
+    )}
   </div>
+
+  {self_review && (
+    <div class="self-review" style="max-width: var(--content-width); margin: 0 auto 3rem; padding: 0 var(--pad-x);">
+      <h3>余隙 Self-Review</h3>
+      <div class="self-review-content">
+        {self_review.split('\n').map((line: string) => (
+          line ? <p>{line}</p> : undefined
+        ))}
+      </div>
+      <p class="self-review-sign">— 余隙</p>
+    </div>
+  )}
 
   {widget === 'cost-flow-visualizer' && (
     <div class="post-widget">
@@ -80,79 +100,123 @@ const diffClass = difficulty === '普及' || difficulty === '普及-' ? 'diff-pu
     </div>
   )}
 
-  <div class="self-review">
-    <h3>Self-Review</h3>
-    <div class="self-review-content">
-      <p>这篇文章写完了。虽然其中可能有几处笔误、公式排版翻车、或者代码跑不通——但这些都是"特色"。</p>
-      <p>写作过程：读题 5 分钟，建图 10 分钟，写代码 30 分钟，调 Bug 2 小时，写博客 3 天（其中两天在查 KaTeX 转义）。</p>
-      <p>如果你看到这篇博客有任何不对劲的地方，那一定是作者太困了。建议读者自行验证代码，不要盲目相信一个凌晨还在调费用的程序媛。</p>
-      <p class="self-review-sign">—— 余隙，写于某个深夜 🌙</p>
+  {widget === 'kruskal-simulator' && (
+    <div class="post-widget">
+      <KruskalSimulator client:only="react" />
     </div>
-  </div>
+  )}
 
   <Footer />
+</BaseLayout>
 
-  <script is:inline>
-    // Auto-generate TOC from h2/h3 headings in .prose
-    (function() {
-      function buildTOC() {
-        const prose = document.getElementById('post-content');
-        const tocList = document.getElementById('toc-list');
-        if (!prose || !tocList) return;
+{hasTOC && (
+  <button class="toc-desktop-toggle" aria-label="展开目录">目录</button>
+)}
 
-        const headings = prose.querySelectorAll('h2, h3');
-        if (headings.length === 0) return;
+<script is:inline>
+document.addEventListener('DOMContentLoaded', () => {
+  function buildTOC() {
+    const headings = document.querySelectorAll('#post-content h2, #post-content h3');
+    const tocList = document.getElementById('toc-list');
+    if (!tocList) return;
 
-        let html = '<ol>';
-        headings.forEach((h, i) => {
-          const id = 'heading-' + i;
-          h.id = id;
-          const indent = h.tagName === 'H3' ? 'style="padding-left:1rem"' : '';
-          const level = h.tagName === 'H3' ? '<li class="toc-h3"' : '<li';
-          html += `<${level} ${indent}><a href="#${id}">${h.textContent}</a></li>`;
+    const toc = [];
+    headings.forEach(h => {
+      if (!h.id) {
+        h.id = h.textContent?.replace(/[\W\u4e00-\u9fff]/g, '-').toLowerCase() || '';
+      }
+      toc.push({
+        id: h.id,
+        text: h.textContent || '',
+        level: h.tagName === 'H2' ? 2 : 3,
+      });
+    });
+
+    if (toc.length === 0) {
+      document.getElementById('toc-sidebar')?.remove();
+      return;
+    }
+
+    let html = '<ol>';
+    const h2s = toc.filter(i => i.level === 2);
+    h2s.forEach((item, idx) => {
+      html += `<li><a href="#${item.id}">${item.text}</a>`;
+      const nextH2Idx = h2s.length - 1 === idx ? toc.length : toc.indexOf(h2s[idx + 1]);
+      const h3s = toc.filter(h3 => h3.level === 3 && toc.indexOf(h3) > toc.indexOf(item) && toc.indexOf(h3) < nextH2Idx);
+      if (h3s.length > 0) {
+        html += '<ol>';
+        h3s.forEach(h3 => {
+          html += `<li class="toc-h3"><a href="#${h3.id}">${h3.text}</a></li>`;
         });
         html += '</ol>';
-        tocList.innerHTML = html;
       }
+      html += '</li>';
+    });
+    html += '</ol>';
+    tocList.innerHTML = html;
+  }
 
-      function initTOC() {
-        buildTOC();
+  function initTOC() {
+    buildTOC();
 
-        const tocSidebar = document.getElementById('toc-sidebar');
-        const toggle = document.querySelector('.toc-mobile-toggle');
-        const closeBtn = document.querySelector('.toc-toggle');
+    const tocSidebar = document.getElementById('toc-sidebar');
+    const toggle = document.querySelector('.toc-toggle');
+    const desktopToggle = document.querySelector('.toc-desktop-toggle');
 
-        if (toggle) {
-          toggle.addEventListener('click', () => {
-            tocSidebar.classList.toggle('open');
-          });
+    // Smooth scroll for TOC links
+    document.querySelectorAll('.toc-list a').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(a.getAttribute('href')?.slice(1) || '');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          history.replaceState(null, '', a.getAttribute('href'));
         }
-        if (closeBtn) {
-          closeBtn.addEventListener('click', () => {
-            tocSidebar.classList.remove('open');
-          });
+      });
+    });
+
+    // Active TOC link on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const id = entry.target.id;
+        const link = document.querySelector(`.toc-list a[href="#${id}"]`);
+        if (link) {
+          if (entry.isIntersecting) {
+            document.querySelectorAll('.toc-list a').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+          }
         }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
 
-        // Smooth scroll for TOC links
-        document.querySelectorAll('.toc-list a').forEach(link => {
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const target = document.querySelector(link.getAttribute('href'));
-            if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              history.pushState(null, '', link.getAttribute('href'));
-            }
-            // Close mobile TOC
-            tocSidebar.classList.remove('open');
-          });
-        });
-      }
+    document.querySelectorAll('#post-content h2, #post-content h3').forEach(h => {
+      if (h.id) observer.observe(h);
+    });
 
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTOC);
-      } else {
-        initTOC();
-      }
-    })();
-  </script>
-</BaseLayout>
+    function collapseTOC() {
+      if (tocSidebar) tocSidebar.classList.add('collapsed');
+      if (desktopToggle) desktopToggle.style.display = 'block';
+      if (toggle) toggle.style.display = 'none';
+    }
+
+    function showTOC() {
+      if (tocSidebar) tocSidebar.classList.remove('collapsed');
+      if (desktopToggle) desktopToggle.style.display = 'none';
+      if (toggle) toggle.style.display = 'flex';
+    }
+
+    if (toggle) toggle.addEventListener('click', collapseTOC);
+    if (desktopToggle) desktopToggle.addEventListener('click', showTOC);
+
+    // Mobile TOC toggle
+    const mobileToggle = document.querySelector('.toc-mobile-toggle');
+    if (mobileToggle) {
+      mobileToggle.addEventListener('click', () => {
+        if (tocSidebar) tocSidebar.classList.toggle('open');
+      });
+    }
+  }
+
+  initTOC();
+});
+</script>
