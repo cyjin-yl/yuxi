@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 400" width="520" height="400">
+  <defs>
+    <style>
+      .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+      .cell-fill { fill: #ffffff; stroke: #bbb; stroke-width: 1; }
+      .val-text { font-size: 13px; font-family: monospace; fill: #333; text-anchor: middle; }
+      .zero-text { font-size: 13px; font-family: monospace; fill: #ccc; text-anchor: middle; }
+      .arrow { stroke: #ff9800; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-blue { stroke: #2196f3; stroke-width: 2; fill: none; marker-end: url(#arrowblue); }
+      .cell-label { font-size: 10px; font-family: sans-serif; fill: #777; text-anchor: middle; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#ff9800"/>
+    </marker>
+    <marker id="arrowblue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2196f3"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="260" y="20" text-anchor="middle" font-size="14" font-family="sans-serif" fill="#444">8×8 方格图（样例数据）</text>
+
+  <!-- Grid cells: 8x8, each cell 36x36, starting at (40, 35) -->
+  <!-- Row 1: all zeros -->
+  <g transform="translate(40, 35)">
+    <!-- Row 1 (y=0) -->
+    <rect class="cell-fill" x="0" y="0" width="36" height="36"/><text class="zero-text" x="18" y="22">0</text>
+    <rect class="cell-fill" x="36" y="0" width="36" height="36"/><text class="zero-text" x="54" y="22">0</text>
+    <rect class="cell-fill" x="72" y="0" width="36" height="36"/><text class="val-text" x="90" y="22">13</text>
+    <rect class="cell-fill" x="108" y="0" width="36" height="36"/><text class="zero-text" x="126" y="22">0</text>
+    <rect class="cell-fill" x="144" y="0" width="36" height="36"/><text class="zero-text" x="162" y="22">0</text>
+    <rect class="cell-fill" x="180" y="0" width="36" height="36"/><text class="val-text" x="198" y="22">6</text>
+    <rect class="cell-fill" x="216" y="0" width="36" height="36"/><text class="zero-text" x="234" y="22">0</text>
+    <rect class="cell-fill" x="252" y="0" width="36" height="36"/><text class="zero-text" x="270" y="22">0</text>
+
+    <!-- Row 2 (y=1) -->
+    <rect class="cell-fill" x="0" y="36" width="36" height="36"/><text class="zero-text" x="18" y="58">0</text>
+    <rect class="cell-fill" x="36" y="36" width="36" height="36"/><text class="zero-text" x="54" y="58">0</text>
+    <rect class="cell-fill" x="72" y="36" width="36" height="36"/><text class="val-text" x="90" y="58">7</text>
+    <rect class="cell-fill" x="108" y="36" width="36" height="36"/><text class="zero-text" x="126" y="58">0</text>
+    <rect class="cell-fill" x="144" y="36" width="36" height="36"/><text class="zero-text" x="162" y="58">0</text>
+    <rect class="cell-fill" x="180" y="36" width="36" height="36"/><text class="zero-text" x="198" y="58">0</text>
+    <rect class="cell-fill" x="216" y="36" width="36" height="36"/><text class="zero-text" x="234" y="58">0</text>
+    <rect class="cell-fill" x="252" y="36" width="36" height="36"/><text class="zero-text" x="270" y="58">0</text>
+
+    <!-- Row 3 (y=2) -->
+    <rect class="cell-fill" x="0" y="72" width="36" height="36"/><text class="zero-text" x="18" y="94">0</text>
+    <rect class="cell-fill" x="36" y="72" width="36" height="36"/><text class="zero-text" x="54" y="94">0</text>
+    <rect class="cell-fill" x="72" y="72" width="36" height="36"/><text class="zero-text" x="90" y="94">0</text>
+    <rect class="cell-fill" x="108" y="72" width="36" height="36"/><text class="zero-text" x="126" y="94">0</text>
+    <rect class="cell-fill" x="144" y="72" width="36" height="36"/><text class="zero-text" x="162" y="94">0</text>
+    <rect class="cell-fill" x="180" y="72" width="36" height="36"/><text class="zero-text" x="198" y="94">0</text>
+    <rect class="cell-fill" x="216" y="72" width="36" height="36"/><text class="val-text" x="234" y="94">14</text>
+    <rect class="cell-fill" x="252" y="72" width="36" height="36"/><text class="zero-text" x="270" y="94">0</text>
+
+    <!-- Row 4 (y=3) -->
+    <rect class="cell-fill" x="0" y="108" width="36" height="36"/><text class="zero-text" x="18" y="130">0</text>
+    <rect class="cell-fill" x="36" y="108" width="36" height="36"/><text class="zero-text" x="54" y="130">0</text>
+    <rect class="cell-fill" x="72" y="108" width="36" height="36"/><text class="zero-text" x="90" y="130">0</text>
+    <rect class="cell-fill" x="108" y="108" width="36" height="36"/><text class="zero-text" x="126" y="130">0</text>
+    <rect class="cell-fill" x="144" y="108" width="36" height="36"/><text class="val-text" x="162" y="130">21</text>
+    <rect class="cell-fill" x="180" y="108" width="36" height="36"/><text class="zero-text" x="198" y="130">0</text>
+    <rect class="cell-fill" x="216" y="108" width="36" height="36"/><text class="zero-text" x="234" y="130">0</text>
+    <rect class="cell-fill" x="252" y="108" width="36" height="36"/><text class="zero-text" x="270" y="130">0</text>
+
+    <!-- Row 5 (y=4) -->
+    <rect class="cell-fill" x="0" y="144" width="36" height="36"/><text class="zero-text" x="18" y="166">0</text>
+    <rect class="cell-fill" x="36" y="144" width="36" height="36"/><text class="zero-text" x="54" y="166">0</text>
+    <rect class="cell-fill" x="72" y="144" width="36" height="36"/><text class="zero-text" x="90" y="166">0</text>
+    <rect class="cell-fill" x="108" y="144" width="36" height="36"/><text class="zero-text" x="126" y="166">0</text>
+    <rect class="cell-fill" x="144" y="144" width="36" height="36"/><text class="zero-text" x="162" y="166">0</text>
+    <rect class="cell-fill" x="180" y="144" width="36" height="36"/><text class="val-text" x="198" y="166">4</text>
+    <rect class="cell-fill" x="216" y="144" width="36" height="36"/><text class="zero-text" x="234" y="166">0</text>
+    <rect class="cell-fill" x="252" y="144" width="36" height="36"/><text class="zero-text" x="270" y="166">0</text>
+
+    <!-- Row 6 (y=5) -->
+    <rect class="cell-fill" x="0" y="180" width="36" height="36"/><text class="zero-text" x="18" y="202">0</text>
+    <rect class="cell-fill" x="36" y="180" width="36" height="36"/><text class="val-text" x="54" y="202">15</text>
+    <rect class="cell-fill" x="72" y="180" width="36" height="36"/><text class="zero-text" x="90" y="202">0</text>
+    <rect class="cell-fill" x="108" y="180" width="36" height="36"/><text class="zero-text" x="126" y="202">0</text>
+    <rect class="cell-fill" x="144" y="180" width="36" height="36"/><text class="zero-text" x="162" y="202">0</text>
+    <rect class="cell-fill" x="180" y="180" width="36" height="36"/><text class="zero-text" x="198" y="202">0</text>
+    <rect class="cell-fill" x="216" y="180" width="36" height="36"/><text class="zero-text" x="234" y="202">0</text>
+    <rect class="cell-fill" x="252" y="180" width="36" height="36"/><text class="zero-text" x="270" y="202">0</text>
+
+    <!-- Row 7 (y=6) -->
+    <rect class="cell-fill" x="0" y="216" width="36" height="36"/><text class="zero-text" x="18" y="238">0</text>
+    <rect class="cell-fill" x="36" y="216" width="36" height="36"/><text class="zero-text" x="54" y="238">0</text>
+    <rect class="cell-fill" x="72" y="216" width="36" height="36"/><text class="zero-text" x="90" y="238">0</text>
+    <rect class="cell-fill" x="108" y="216" width="36" height="36"/><text class="zero-text" x="126" y="238">0</text>
+    <rect class="cell-fill" x="144" y="216" width="36" height="36"/><text class="zero-text" x="162" y="238">0</text>
+    <rect class="cell-fill" x="180" y="216" width="36" height="36"/><text class="zero-text" x="198" y="238">0</text>
+    <rect class="cell-fill" x="216" y="216" width="36" height="36"/><text class="val-text" x="234" y="238">14</text>
+    <rect class="cell-fill" x="252" y="216" width="36" height="36"/><text class="zero-text" x="270" y="238">0</text>
+
+    <!-- Row 8 (y=7) -->
+    <rect class="cell-fill" x="0" y="252" width="36" height="36"/><text class="zero-text" x="18" y="274">0</text>
+    <rect class="cell-fill" x="36" y="252" width="36" height="36"/><text class="zero-text" x="54" y="274">0</text>
+    <rect class="cell-fill" x="72" y="252" width="36" height="36"/><text class="zero-text" x="90" y="274">0</text>
+    <rect class="cell-fill" x="108" y="252" width="36" height="36"/><text class="zero-text" x="126" y="274">0</text>
+    <rect class="cell-fill" x="144" y="252" width="36" height="36"/><text class="zero-text" x="162" y="274">0</text>
+    <rect class="cell-fill" x="180" y="252" width="36" height="36"/><text class="zero-text" x="198" y="274">0</text>
+    <rect class="cell-fill" x="216" y="252" width="36" height="36"/><text class="zero-text" x="234" y="274">0</text>
+    <rect class="cell-fill" x="252" y="252" width="36" height="36"/><text class="zero-text" x="270" y="274">0</text>
+  </g>
+
+  <!-- A and B labels -->
+  <text x="42" y="32" font-size="12" font-family="serif" fill="#e91e63" font-weight="bold">A</text>
+  <text x="304" y="307" font-size="12" font-family="serif" fill="#2196f3" font-weight="bold">B</text>
+
+  <!-- Path 1 (orange) -->
+  <path d="M61,56 L61,92 L61,128 L61,164 L61,200 L61,236 L61,272 L97,272 L133,272 L169,272 L205,272 L241,272 L277,272" class="arrow"/>
+  <text x="61" y="50" font-size="9" fill="#ff9800" text-anchor="middle">路径一</text>
+
+  <!-- Path 2 (blue) -->
+  <path d="M61,56 L97,56 L133,56 L169,56 L205,56 L241,56 L277,56 L277,92 L277,128 L277,164 L277,200 L277,236 L277,272" class="arrow-blue"/>
+  <text x="277" y="50" font-size="9" fill="#2196f3" text-anchor="middle">路径二</text>
+
+  <!-- Legend -->
+  <rect x="340" y="30" width="150" height="70" rx="6" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+  <text x="355" y="50" font-size="11" fill="#ff9800">● 路径一（橙色）</text>
+  <text x="355" y="68" font-size="11" fill="#2196f3">● 路径二（蓝色）</text>
+  <text x="355" y="86" font-size="10" fill="#777">两条路径同时从A走到B</text>
+</svg>

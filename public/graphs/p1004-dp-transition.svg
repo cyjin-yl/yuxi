@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 340" width="520" height="340">
+  <defs>
+    <style>
+      .node { fill: #fff; stroke: #555; stroke-width: 1.5; rx: 5; }
+      .node-curr { fill: #e3f2fd; stroke: #1565c0; stroke-width: 2; rx: 5; }
+      .val { font-size: 11px; font-family: monospace; fill: #333; text-anchor: middle; }
+      .arr { stroke: #888; stroke-width: 1; marker-end: url(#ah); }
+    </style>
+    <marker id="ah" markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 6 2.5, 0 5" fill="#888"/>
+    </marker>
+  </defs>
+
+  <text x="260" y="22" text-anchor="middle" font-size="14" fill="#333" font-family="sans-serif">DP 状态转移：4 种前驱</text>
+
+  <!-- Current state -->
+  <g transform="translate(230, 220)">
+    <rect class="node-curr" width="120" height="50"/>
+    <text class="val" x="60" y="22">dp[k][x₁][x₂]</text>
+    <text class="val" x="60" y="40" font-size="9" fill="#777">当前位置</text>
+  </g>
+
+  <!-- Four previous states -->
+  <!-- 1. Both from above (left-up) -->
+  <g transform="translate(40, 60)">
+    <rect class="node" width="130" height="50"/>
+    <text class="val" x="65" y="22">dp[k-1][x₁-1][x₂-1]</text>
+    <text class="val" x="65" y="40" font-size="9" fill="#777">① 两人均从上而来</text>
+  </g>
+
+  <!-- 2. Both from left (left-down) -->
+  <g transform="translate(40, 150)">
+    <rect class="node" width="130" height="50"/>
+    <text class="val" x="65" y="22">dp[k-1][x₁][x₂]</text>
+    <text class="val" x="65" y="40" font-size="9" fill="#777">② 两人均从左而来</text>
+  </g>
+
+  <!-- 3. P1 from above, P2 from left (right-up) -->
+  <g transform="translate(370, 60)">
+    <rect class="node" width="130" height="50"/>
+    <text class="val" x="65" y="22">dp[k-1][x₁-1][x₂]</text>
+    <text class="val" x="65" y="40" font-size="9" fill="#777">③ P1 从上, P2 从左</text>
+  </g>
+
+  <!-- 4. P1 from left, P2 from above (right-down) -->
+  <g transform="translate(370, 150)">
+    <rect class="node" width="130" height="50"/>
+    <text class="val" x="65" y="22">dp[k-1][x₁][x₂-1]</text>
+    <text class="val" x="65" y="40" font-size="9" fill="#777">④ P1 从左, P2 从上</text>
+  </g>
+
+  <!-- Arrows -->
+  <line class="arr" x1="170" y1="85" x2="240" y2="245"/>
+  <line class="arr" x1="170" y1="175" x2="240" y2="245"/>
+  <line class="arr" x1="360" y1="85" x2="350" y2="245"/>
+  <line class="arr" x1="360" y1="175" x2="350" y2="245"/>
+
+  <!-- Formula at bottom -->
+  <rect x="100" y="290" width="320" height="36" rx="6" fill="#f5f5f5" stroke="#ddd"/>
+  <text x="260" y="312" text-anchor="middle" font-size="11" fill="#333" font-family="monospace">
+    dp[k][x₁][x₂] = max{①,②,③,④} + a[x₁][k-x₁] + a[x₂][k-x₂] (x₁≠x₂)
+  </text>
+</svg>

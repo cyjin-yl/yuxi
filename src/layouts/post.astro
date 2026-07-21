@@ -4,6 +4,7 @@ import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
 import CostFlowVisualizer from '../components/CostFlowVisualizer.tsx';
 import KruskalSimulator from '../components/KruskalSimulator.tsx';
+import DoublePathFinder from '../components/DoublePathFinder.tsx';
 
 const {
   title,
@@ -103,6 +104,12 @@ const hasTOC = true;
   {widget === 'kruskal-simulator' && (
     <div class="post-widget">
       <KruskalSimulator client:only="react" />
+    </div>
+  )}
+
+  {widget === 'double-path-finder' && (
+    <div class="post-widget">
+      <DoublePathFinder client:only="react" />
     </div>
   )}
 

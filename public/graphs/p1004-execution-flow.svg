@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 520" width="460" height="520">
+  <defs>
+    <style>
+      .step-box { fill: #fff; stroke: #1565c0; stroke-width: 1.5; rx: 5; }
+      .step-title { font-size: 12px; font-family: sans-serif; fill: #1565c0; font-weight: bold; }
+      .step-desc { font-size: 10px; font-family: sans-serif; fill: #555; }
+      .arrow-v { stroke: #1565c0; stroke-width: 1.5; marker-end: url(#ah); }
+    </style>
+    <marker id="ah" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#1565c0"/>
+    </marker>
+  </defs>
+
+  <text x="230" y="22" text-anchor="middle" font-size="14" fill="#333" font-family="sans-serif">DP 执行流程</text>
+
+  <!-- Step 1 -->
+  <g transform="translate(40, 40)">
+    <rect class="step-box" width="380" height="55"/>
+    <text class="step-title" x="15" y="22">① 读入数据</text>
+    <text class="step-desc" x="15" y="40">读取 n×n 方格图，坐标格式 (x, y, val)，0 0 0 结束</text>
+    <text class="step-desc" x="15" y="52">存入 a[x][y]，未出现的格子值为 0</text>
+  </g>
+
+  <line class="arrow-v" x1="230" y1="95" x2="230" y2="110"/>
+
+  <!-- Step 2 -->
+  <g transform="translate(40, 110)">
+    <rect class="step-box" width="380" height="55"/>
+    <text class="step-title" x="15" y="22">② 初始化 DP</text>
+    <text class="step-desc" x="15" y="40">dp[2..2n][1..n][1..n] = 0</text>
+    <text class="step-desc" x="15" y="52">k=2 时两条路径都在 (1,1)，无需初始化（起始值为 0）</text>
+  </g>
+
+  <line class="arrow-v" x1="230" y1="165" x2="230" y2="180"/>
+
+  <!-- Step 3 -->
+  <g transform="translate(40, 180)">
+    <rect class="step-box" width="380" height="70"/>
+    <text class="step-title" x="15" y="22">③ 枚举步数 k = 2 → 2n</text>
+    <text class="step-desc" x="15" y="42">对每个 k，枚举 x₁ ∈ [max(1,k-n), min(n,k-1)]</text>
+    <text class="step-desc" x="15" y="54">枚举 x₂ 同理，计算 y₁ = k−x₁, y₂ = k−x₂</text>
+    <text class="step-desc" x="15" y="66">检查 y₁, y₂ 是否在 [1,n] 范围内</text>
+  </g>
+
+  <line class="arrow-v" x1="230" y1="250" x2="230" y2="265"/>
+
+  <!-- Step 4 -->
+  <g transform="translate(40, 265)">
+    <rect class="step-box" width="380" height="70"/>
+    <text class="step-title" x="15" y="22">④ 取 4 个前驱的最大值</text>
+    <text class="step-desc" x="15" y="40">dp[k-1][x₁-1][x₂-1] → 两人均从上一步的上/上位置来</text>
+    <text class="step-desc" x="15" y="52">dp[k-1][x₁][x₂]       → 两人均从左/左位置来</text>
+    <text class="step-desc" x="15" y="64">dp[k-1][x₁-1][x₂], dp[k-1][x₁][x₂-1] → 一上一下</text>
+  </g>
+
+  <line class="arrow-v" x1="230" y1="335" x2="230" y2="350"/>
+
+  <!-- Step 5 -->
+  <g transform="translate(40, 350)">
+    <rect class="step-box" width="380" height="60"/>
+    <text class="step-title" x="15" y="22">⑤ 加上当前格子的值</text>
+    <text class="step-desc" x="15" y="40">+ a[x₁][y₁]（路径一的当前格子）</text>
+    <text class="step-desc" x="15" y="52">若 x₁≠x₂，再 + a[x₂][y₂]（路径二的当前格子）</text>
+  </g>
+
+  <line class="arrow-v" x1="230" y1="410" x2="230" y2="425"/>
+
+  <!-- Step 6 -->
+  <g transform="translate(40, 425)">
+    <rect class="step-box" width="380" height="55" fill="#e8f5e9" stroke="#2e7d32"/>
+    <text class="step-title" x="15" y="22" fill="#2e7d32">⑥ 输出答案</text>
+    <text class="step-desc" x="15" y="40">dp[2n][n][n] —— 两条路径同时到达 (n,n) 时的最优值</text>
+    <text class="step-desc" x="15" y="52">时间复杂度 O(n³)，空间 O(n³)</text>
+  </g>
+</svg>
