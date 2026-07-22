@@ -981,29 +981,19 @@ a:hover {
     padding: 0.75rem 0.9rem;
   }
 
-  .toc-mobile-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .toc-sticky-wrapper {
-    display: none;
-  }
-
   .toc-sidebar {
     position: fixed;
     top: 0;
     right: 0;
     width: 260px;
-    height: 100vh;
-    max-height: 100vh;
+    height: 100%;
     z-index: 200;
     transform: translateX(100%);
     transition: transform 0.3s ease;
     border: none;
     border-left: 1px solid var(--border);
     border-radius: 0;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.12);
     padding: 1rem;
   }
 
@@ -1016,24 +1006,29 @@ a:hover {
     display: block;
   }
 
-  .widget-container {
-    font-size: 0.85rem;
+  .toc-desktop-toggle {
+    display: none;
   }
 
-  .widget-inputs .inp {
-    width: 3rem;
-    font-size: 0.8rem;
+  .toc-sticky-wrapper {
+    display: none;
   }
+}
 
-  .btn-match,
-  .btn-reset {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
+@media (min-width: 601px) and (max-width: 1023px) {
+  /* Tablet: no inline sidebar, floating toggle only */
+  .toc-sticky-wrapper {
+    display: none;
   }
 }
 
 @media (min-width: 1024px) {
+  /* Desktop: inline sidebar, hide toggle buttons */
   .toc-mobile-toggle {
+    display: none;
+  }
+
+  .toc-desktop-toggle {
     display: none;
   }
 }
