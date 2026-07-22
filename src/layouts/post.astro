@@ -5,6 +5,7 @@ import Footer from '../components/footer.astro';
 import CostFlowVisualizer from '../components/CostFlowVisualizer.tsx';
 import KruskalSimulator from '../components/KruskalSimulator.tsx';
 import DoublePathFinder from '../components/DoublePathFinder.tsx';
+import DPTransitionMatrix from '../components/DPTransitionMatrix.tsx';
 
 const {
   title,
@@ -104,6 +105,12 @@ const hasTOC = true;
   {widget === 'kruskal-simulator' && (
     <div class="post-widget">
       <KruskalSimulator client:only="react" />
+    </div>
+  )}
+
+  {widget === 'dp-transition-matrix' && (
+    <div class="post-widget">
+      <DPTransitionMatrix client:only="react" />
     </div>
   )}
 

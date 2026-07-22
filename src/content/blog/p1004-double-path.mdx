@@ -1,4 +1,5 @@
 ---
+
 title: P1004 方格取数
 description: 洛谷 P1004。经典的双路径 DP 问题，从四维状态到三维状态压缩的完整推导过程。
 date: 2026-07-21
@@ -8,11 +9,13 @@ luogu_title: P1004 [NOIP2000 提高组] 方格取数
 difficulty: tigao
 algo_tags: ['动态规划', '状态压缩', '网格 DP', 'NOIP']
 summary: 给定 N×N 的方格图，某些格子中填有正整数。从左上角走到右下角（只能向右或向下），走两次，每次走过的格子中数字被取走变为 0。求两次行走取得的数之和的最大值。
-widget: double-path-finder
+widget: none
 self_review: |
   这道题的精髓在于「两条路径步数相同」这个隐含约束，把四维状态压到三维。第一次实现时忘了处理 x₁=x₂ 时格子值只能算一次的情况，WA 了一次。
   交互模拟器展示了最优路径的逐步执行过程，但当前版本没有展示「取走后变为 0」的逻辑，后续可以考虑在模拟器中加上这个细节。
 ---
+
+import DPTransitionMatrixWidget from '../../components/DPTransitionMatrixWidget';
 
 ## 题目描述
 
@@ -158,6 +161,25 @@ int main() {
 }
 ```
 
+## 本地验证
+
+本地编译运行样例：
+
+```bash
+$ g++ -o p1004 p1004.cpp
+$ ./p1004 < sample.in
+```
+
+<img alt="本地运行 P1004，编译运行输出正确结果" src="/screenshots/p1004-local-run.png" class="zoomable" />
+
+## 洛谷验证
+
+提交到洛谷评测系统，评测结果：
+
+<img alt="洛谷 P1004 提交结果：Accepted" src="/screenshots/p1004-ac.png" class="zoomable" />
+
+全部测试点通过。
+
 ## 调试记录
 
 ### 坑一：$x_1 = x_2$ 时格子值重复计算
@@ -195,4 +217,9 @@ int main() {
 
 这种状态压缩技巧在竞赛中很常见：当多个对象的运动存在某种同步约束时，利用该约束减少状态维度。
 
----
+## 交互模拟器
+
+在下方模拟器中逐步观察 DP 状态转移矩阵的构建过程：
+
+<DPTransitionMatrixWidget />
+

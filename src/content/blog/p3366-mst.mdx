@@ -1,4 +1,5 @@
 ---
+
 title: P3366 最小生成树
 description: 洛谷 P3366。Kruskal / Prim 双算法详解，并查集与优先队列实现。
 date: 2026-07-20
@@ -8,11 +9,13 @@ luogu_title: P3366 【模板】最小生成树
 difficulty: puji
 algo_tags: ['图论', '最小生成树', 'Kruskal', 'Prim', '并查集']
 summary: 给定 n 个顶点和 m 条边，求最小生成树的边权和。
-widget: kruskal-simulator
+widget: none
 self_review: |
   Kruskal 是最经典的最小生成树算法，但这篇写的过程中还是踩了不少坑——连通性检查、long long 溢出这些细节，模板题也容易翻车。
   交互模拟器做了，但边数太多的时候性能可能会有问题，后续考虑加个节流。
 ---
+
+import KruskalSimulatorWidget from '../../components/KruskalSimulatorWidget';
 
 ## 题目描述
 
@@ -147,6 +150,25 @@ int main() {
   <figcaption>图 5：Kruskal 完整执行流程：边排序 → 逐条处理 → 并查集判环 → 收集答案。</figcaption>
 </figure>
 
+## 本地验证
+
+本地编译运行样例：
+
+```bash
+$ g++ -o p3366 p3366.cpp
+$ ./p3366 < sample.in
+```
+
+<img alt="本地运行 P3366，编译运行输出正确结果" src="/screenshots/p3366-local-run.png" class="zoomable" />
+
+## 洛谷验证
+
+提交到洛谷评测系统，评测结果：
+
+<img alt="洛谷 P3366 提交结果：Accepted" src="/screenshots/p3366-ac.png" class="zoomable" />
+
+全部测试点通过。
+
 ## 调试记录
 
 实际写代码时踩了几个坑，值得记录：
@@ -185,3 +207,10 @@ int main() {
 3. **连通性检查**——生成树边数必须等于 $n-1$，否则图不连通
 
 最小生成树是图论中最经典的模板之一，Kruskal 实现简洁、效率足够，是竞赛中的首选。
+
+## 交互模拟器
+
+在下方模拟器中逐步观察 Kruskal 算法的执行过程：
+
+<KruskalSimulatorWidget />
+
