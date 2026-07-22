@@ -758,22 +758,30 @@ a:hover {
   padding: 0 var(--pad-x);
 }
 
-/* ── TOC Sidebar: fixed to viewport, always vertically centered ── */
-
-.toc-sticky-wrapper {
-  position: fixed;
-  top: 50%;
-  right: 1rem;
-  transform: translateY(-50%);
-  z-index: 100;
-  width: 240px;
+@media (min-width: 1024px) {
+  .post-wrapper {
+    display: flex;
+    gap: 1.5rem;
+    max-width: calc(var(--content-width) + 220px);
+  }
 }
 
-/* ── TOC Sidebar: fills the fixed wrapper, vertically centered ── */
+/* ── TOC Sidebar: sticky inline on desktop, drawer on mobile ── */
+
+.toc-sticky-wrapper {
+  position: sticky;
+  top: 3rem;
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* ── TOC Sidebar: fills the wrapper, sticky on desktop ── */
 
 .toc-sidebar {
+  position: sticky;
+  top: 3rem;
   width: 100%;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 6rem);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--bg);
@@ -785,6 +793,9 @@ a:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
 }
 
 .toc-header {
@@ -804,24 +815,9 @@ a:hover {
 
 .toc-scroll {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: visible;
   overflow-x: hidden;
   padding: 0.5rem 1rem 1rem;
-  scrollbar-width: thin;
-  scrollbar-color: var(--rule) transparent;
-}
-
-.toc-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.toc-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.toc-scroll::-webkit-scrollbar-thumb {
-  background: var(--rule);
-  border-radius: 2px;
 }
 
 .toc-sidebar.collapsed {
@@ -914,7 +910,7 @@ a:hover {
 /* ── Mobile TOC Toggle ── */
 
 .toc-mobile-toggle {
-  display: none;
+  display: flex;
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
@@ -937,7 +933,7 @@ a:hover {
 /* ── Desktop TOC Toggle (shown when TOC is collapsed) ── */
 
 .toc-desktop-toggle {
-  display: none;
+  display: flex;
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
