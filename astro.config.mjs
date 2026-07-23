@@ -11,7 +11,7 @@ export default defineConfig({
   integrations: [
     mdx({
       extendsExisting: true,
-      remarkPlugins: [remarkMath],
+      remarkPlugins: [[remarkMath]],
       rehypePlugins: [rehypeKatex],
     }),
     react(),

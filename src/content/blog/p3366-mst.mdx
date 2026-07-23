@@ -19,7 +19,7 @@ import KruskalSimulatorWidget from '../../components/KruskalSimulatorWidget';
 
 ## 题目描述
 
-给定 $n$ 个顶点和 $m$ 条边，每条边有正权值 $w_i$。求一棵生成树，使得所有边权之和最小。若图不连通则输出 "orz"。
+给定 \(n\) 个顶点和 \(m\) 条边，每条边有正权值 $w_i$。求一棵生成树，使得所有边权之和最小。若图不连通则输出 "orz"。
 
 ## 读题分析
 
@@ -31,11 +31,11 @@ import KruskalSimulatorWidget from '../../components/KruskalSimulatorWidget';
 
 **Kruskal**：按边权从小到大排序，贪心地选边，用并查集判断是否成环。
 
-适合**稀疏图**（$m$ 不太大），实现简洁。
+适合**稀疏图**（\(m\) 不太大），实现简洁。
 
 **Prim**：从一个点出发，每次选离当前生成树最近的未访问点加入。用优先队列优化后可达 $O(m \log n)$。
 
-适合**稠密图**（$m$ 很大），但实现稍复杂。
+适合**稠密图**（\(m\) 很大），但实现稍复杂。
 
 本题中 $n \le 50000, m \le 100000$，属于稀疏图，Kruskal 是更自然的选择。
 
@@ -43,7 +43,7 @@ import KruskalSimulatorWidget from '../../components/KruskalSimulatorWidget';
 
 ### Kruskal 算法
 
-Kruskal 的核心思想是**贪心 + 并查集**：将所有边按权值从小到大排序，依次考虑每条边 $(u, v)$，若 $u$ 和 $v$ 不在同一个连通分量中（用并查集判断），就将这条边加入生成树；否则跳过（加它会形成环）。
+Kruskal 的核心思想是**贪心 + 并查集**：将所有边按权值从小到大排序，依次考虑每条边 $(u, v)$，若 \(u\) 和 \(v\) 不在同一个连通分量中（用并查集判断），就将这条边加入生成树；否则跳过（加它会形成环）。
 
 <figure>
   ![](/graphs/kruskal-algorithm.svg)
@@ -187,7 +187,7 @@ $ ./p3366 < sample.in
 
 ### 坑三：`long long` 溢出
 
-边权求和用 `int`，但 $m$ 较大时总和可能溢出。
+边权求和用 `int`，但 \(m\) 较大时总和可能溢出。
 
 **修复：** 答案变量用 `long long`。
 
