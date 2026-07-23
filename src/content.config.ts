@@ -20,4 +20,10 @@ export const collections = {
       self_review: z.string().optional(),
     }),
   }),
+  songs: defineCollection({
+    loader: glob({ base: './src/content/songs', pattern: '*.md' }),
+    schema: z.object({
+      title: z.string(),
+    }),
+  }),
 };

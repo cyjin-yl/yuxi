@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/base.astro';
+import Header from '../../components/header.astro';
+import Footer from '../../components/footer.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const songs = await getCollection('songs');
+  return songs.map(song => ({
+    params: { slug: song.id },
+    props: { song },
+  }));
+}
+
+const { song } = Astro.props;
+
+if (!song) {
+  Astro.redirect('/songs/');
+}
+
+const Content = song.render();
+---
+
+<BaseLayout>
+  <Header currentPath="/songs/" />
+  <article class="prose">
+    <div class="post-header">
+      <a href="/songs/" class="post-meta">← 返回列表</a>
+    </div>
+    <Content />
+  </article>
+  <Footer />
+</BaseLayout>
