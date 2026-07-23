@@ -1,0 +1,42 @@
+digraph alpine_dns_stuck {
+    rankdir=LR;
+    bgcolor="transparent";
+    node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=11];
+    edge [fontname="Noto Sans CJK SC", fontsize=10];
+
+    subgraph cluster_glibc {
+        label="glibc 主机 (Debian/Ubuntu/RHEL)";
+        labeljust="l";
+        fontname="Noto Sans CJK SC";
+        fontsize=10;
+        style="rounded,dashed";
+        color="#999999";
+
+        app_g [label="应用\nglibc", fillcolor="#e8f4ff"];
+        nss_g [label="nsswitch.conf\n+ nscd", fillcolor="#fff4d6"];
+        res_g [label="/etc/resolv.conf\nsystemd-resolved\n127.0.0.53", fillcolor="#fff4d6"];
+        app_g -> nss_g -> res_g [label="标准链路"];
+    }
+
+    subgraph cluster_musl {
+        label="Alpine / musl 容器";
+        labeljust="l";
+        fontname="Noto Sans CJK SC";
+        fontsize=10;
+        style="rounded,dashed";
+        color="#ff7a7a";
+
+        app_m [label="应用\nmusl", fillcolor="#ffe8e8"];
+        noswitch [label="无 nsswitch\n无 nscd\n无 systemd", shape=octagon, fillcolor="#ffcccc"];
+        resolv_m [label="只看\n/etc/resolv.conf\n前三 nameserver", fillcolor="#ffe8e8"];
+        app_m -> noswitch -> resolv_m [label="唯一链路", color="#cc0000", fontcolor="#cc0000"];
+    }
+
+    res_g -> upstream_g [label="上游 DNS\n走 stub 或 unicast"];
+    resolv_m -> upstream_g [label="直接发包"];
+
+    upstream_g [label="真实 DNS\n1.1.1.1 / 8.8.8.8", fillcolor="#d6f5d6", shape=ellipse];
+
+    broken [label="?", shape=plaintext, fontsize=13, fontcolor="#cc0000"];
+    resolv_m -> broken [label="容器里\n常拿不到这俩", style=dashed, color="#cc0000", fontcolor="#cc0000"];
+}

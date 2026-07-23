@@ -1,0 +1,24 @@
+digraph alpine_dns_fix {
+    rankdir=TB;
+    bgcolor="transparent";
+    node [shape=box, style="rounded,filled", fontname="Noto Sans CJK SC", fontsize=11, fontcolor="#222222"];
+    edge [fontname="Noto Sans CJK SC", fontsize=10, color="#555555"];
+
+    start [label="应用发起 dns 查询\ngethostbyname(\"api.example.com\")", fillcolor="#e8f4ff"];
+
+    branch [label="Alpine?\n是否在 musl 环境?", shape=diamond, fillcolor="#fff4d6"];
+
+    p1 [label="把 /etc/resolv.conf\n写死真实 DNS\necho 'nameserver 1.1.1.1' > /etc/resolv.conf", fillcolor="#d6f5d6"];
+    p2 [label="关闭 resolv-file 注入\n(Docker --dns=1.1.1.1 --dns=8.8.8.8)", fillcolor="#d6f5d6"];
+    p3 [label="拨到非 stub 上游\nsystemd-resolved 关掉\n改用本机 unbound", fillcolor="#d6f5d6"];
+    p4 [label="装 gcompat + glibc 镜像\n换 Debian-slim 算了", shape=octagon, fillcolor="#ffe8e8"];
+
+    sutil [label="直接调 HTTP API,不依赖 DNS\n例如 ip 写死 / hosts 写死", fillcolor="#fff4d6"];
+
+    start -> branch;
+    branch -> p1;
+    branch -> p2;
+    branch -> p3;
+    branch -> sutil;
+    branch -> p4;
+}
