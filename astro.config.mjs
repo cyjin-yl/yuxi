@@ -15,12 +15,9 @@ export default defineConfig({
         [
           remarkMath,
           {
-            // Custom delimiters that survive MDX/Oxc JSX parsing
-            inline: [{ left: '$', right: '$' }],
-            display: [
-              { left: '$$', right: '$$', display: true },
-              { left: '\\[', right: '\\]', display: true },
-            ],
+            // Use LaTeX delimiters to avoid Oxc JSX parsing conflict
+            inline: [{ left: '\\(', right: '\\)' }],
+            display: [{ left: '\\[', right: '\\]', display: true }],
           },
         ],
       ],
