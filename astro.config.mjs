@@ -11,7 +11,19 @@ export default defineConfig({
   integrations: [
     mdx({
       extendsExisting: true,
-      remarkPlugins: [[remarkMath]],
+      remarkPlugins: [
+        [
+          remarkMath,
+          {
+            // Custom delimiters that survive MDX/Oxc JSX parsing
+            inline: [{ left: '$', right: '$' }],
+            display: [
+              { left: '$$', right: '$$', display: true },
+              { left: '\\[', right: '\\]', display: true },
+            ],
+          },
+        ],
+      ],
       rehypePlugins: [rehypeKatex],
     }),
     react(),
