@@ -1,0 +1,69 @@
+{
+  "source": "large-v3/large-v3-turbo Whisper GPU + subagent word audits",
+  "transcript_replaced_tracks": [
+    "06_Do_Re_Mi",
+    "10_Turkey_in_the_Straw",
+    "20_Days_of_My_Past",
+    "23_Mothers_Day_Song",
+    "26_Memory"
+  ],
+  "timing_patched_tracks": {
+    "33_What_a_Wonderful_World": {
+      "3": [
+        18.68,
+        27.02
+      ],
+      "4": [
+        32.08,
+        39.36
+      ],
+      "5": [
+        39.36,
+        45.4
+      ],
+      "6": [
+        45.4,
+        53.78
+      ],
+      "7": [
+        60.0,
+        65.34
+      ],
+      "8": [
+        65.82,
+        71.68
+      ],
+      "9": [
+        72.06,
+        78.96
+      ],
+      "10": [
+        80.4,
+        85.48
+      ],
+      "11": [
+        85.48,
+        92.56
+      ],
+      "12": [
+        93.92,
+        99.22
+      ],
+      "13": [
+        99.96,
+        107.52
+      ],
+      "14": [
+        111.4,
+        122.2
+      ]
+    }
+  },
+  "notes": {
+    "23_Mothers_Day_Song": "Audio is Skidamarink-style, not original Mother's Day lyric text.",
+    "10_Turkey_in_the_Straw": "Audio is a different Turkey in the Straw variant; old text mostly absent.",
+    "20_Days_of_My_Past": "Audio text differs from old generic SRT; transcript SRT used.",
+    "06_Do_Re_Mi": "Audio starts with solfege/variant ordering; old intro lines absent.",
+    "26_Memory": "Old SRT had absent intro/duplicate reprise; transcript SRT used with copyright segments filtered."
+  }
+}
