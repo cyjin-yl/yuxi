@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../../layouts/base.astro';
+import Header from '../../../components/header.astro';
+import Footer from '../../../components/footer.astro';
+import PostList from '../../../components/PostList.astro';
+import Pagination from '../../../components/Pagination.astro';
+import { getPublishedPosts, paginate, POSTS_PER_PAGE } from '../../../lib/posts';
+
+export async function getStaticPaths() {
+  const all = await getPublishedPosts();
+  const totalPages = Math.max(1, Math.ceil(all.length / POSTS_PER_PAGE));
+  // Page 1 lives at /blog/; only emit 2..N
+  return Array.from({ length: Math.max(0, totalPages - 1) }, (_, i) => ({
+    params: { page: String(i + 2) },
+  }));
+}
+
+const pageNum = Number(Astro.params.page);
+const all = await getPublishedPosts();
+const { items, currentPage, totalPages, total } = paginate(all, pageNum, POSTS_PER_PAGE);
+
+if (!Number.isFinite(pageNum) || pageNum < 2 || pageNum > totalPages) {
+  return Astro.redirect('/blog/');
+}
+---
+
+<BaseLayout title={`博客 · 第 ${currentPage} 页`} description={`博客第 ${currentPage} 页，共 ${total} 篇。`}>
+  <Header currentPath="/blog/" />
+
+  <main id="main" class="home">
+    <div class="home-intro">
+      <h1>博客</h1>
+      <p>共 {total} 篇，按时间倒序。</p>
+    </div>
+
+    <PostList posts={items} />
+    <Pagination
+      currentPage={currentPage}
+      totalPages={totalPages}
+      indexPath="/blog/"
+      pageBasePath="/blog/page"
+    />
+  </main>
+
+  <Footer />
+</BaseLayout>

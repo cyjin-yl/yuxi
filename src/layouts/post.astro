@@ -2,235 +2,261 @@
 import BaseLayout from './base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
-import CostFlowVisualizer from '../components/CostFlowVisualizer.tsx';
-import KruskalSimulator from '../components/KruskalSimulator.tsx';
-import DoublePathFinder from '../components/DoublePathFinder.tsx';
-import DPTransitionMatrix from '../components/DPTransitionMatrix.tsx';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags?: string[];
+  description?: string;
+  luogu_url?: string;
+  luogu_title?: string;
+  difficulty?: string;
+  algo_tags?: string[];
+  summary?: string;
+  self_review?: string;
+}
 
 const {
   title,
   date,
   tags = [],
+  description,
   luogu_url,
   luogu_title,
   difficulty,
   algo_tags,
   summary,
-  widget,
   self_review,
 } = Astro.props;
 
-// We'll build TOC on the client side since headings come from <slot/>
 const hasTOC = true;
+
+function difficultyLabel(d: string) {
+  if (d === 'puji') return '普及';
+  if (d === 'tigao') return '提高';
+  if (d === 'shengxuan') return '省选';
+  return '未知';
+}
 ---
 
-<BaseLayout title={title} tags={tags} date={date}>
-  <Header />
+<BaseLayout title={title} tags={tags} date={date} description={description}>
+  <Header currentPath="/blog/" />
 
-  <header class="post-header">
-    <h1 class="post-title">{title}</h1>
-    <div class="post-meta">
-      <time datetime={date.toISOString()}>{date.toLocaleDateString('zh-CN')}</time>
-      {tags.map((tag: string) => (
-        <span class="tag">{tag}</span>
-      ))}
-    </div>
-  </header>
-
-  {luogu_url && (
-    <div class="post-widget">
-      <div class="luogu-header">
-        <div class="luogu-title-row">
-          <span class="luogu-problem-name">{luogu_title || title}</span>
-          <a class="luogu-link" href={luogu_url} target="_blank" rel="noopener noreferrer">
-            洛谷原题 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="10 9 15 4 21 4 21 10 16 10"/><line x1="15" y1="4" x2="15" y2="4.01"/></svg>
-          </a>
-        </div>
-        <div class="luogu-meta">
-          {difficulty && <span class={`luogu-diff diff-${difficulty}`}>{difficulty === 'puji' ? '普及' : difficulty === 'tigao' ? '提高' : difficulty === 'shengxuan' ? '省选' : '未知'}</span>}
-          {algo_tags?.map((tag: string) => (
-            <span class="luogu-tag">{tag}</span>
-          ))}
-        </div>
-        <p class="luogu-summary">{summary}</p>
+  <main id="main">
+    <header class="post-header">
+      <h1 class="post-title">{title}</h1>
+      <div class="post-meta">
+        <time datetime={date.toISOString()}>
+          {
+            date.toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+            })
+          }
+        </time>
+        {
+          tags.map((tag: string) => (
+            <a href={`/tags/${tag}/`} class="tag">
+              {tag}
+            </a>
+          ))
+        }
       </div>
-    </div>
-  )}
+    </header>
 
-  <div class="post-wrapper">
-    <article class="prose" id="post-content">
-      <slot />
-    </article>
-
-    {hasTOC && (
-      <div class="toc-sticky-wrapper">
-        <aside class="toc-sidebar" id="toc-sidebar">
-          <div class="toc-header">
-            <h3>目录</h3>
-            <button class="toc-toggle" aria-label="关闭目录">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+    {
+      luogu_url && (
+        <div class="post-widget">
+          <div class="luogu-header">
+            <div class="luogu-title-row">
+              <span class="luogu-problem-name">{luogu_title || title}</span>
+              <a class="luogu-link" href={luogu_url} target="_blank" rel="noopener noreferrer">
+                洛谷原题
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            </div>
+            <div class="luogu-meta">
+              {difficulty && (
+                <span class={`luogu-diff diff-${difficulty}`}>{difficultyLabel(difficulty)}</span>
+              )}
+              {algo_tags?.map((tag: string) => (
+                <span class="luogu-tag">{tag}</span>
+              ))}
+            </div>
+            {summary && <p class="luogu-summary">{summary}</p>}
           </div>
-          <div class="toc-scroll">
-            <nav class="toc-list" id="toc-list">
-              <!-- Built by JS -->
-            </nav>
+        </div>
+      )
+    }
+
+    <div class="post-wrapper">
+      <article class="prose" id="post-content">
+        <slot />
+      </article>
+
+      {
+        hasTOC && (
+          <div class="toc-sticky-wrapper" id="toc-wrap" hidden>
+            <div class="toc-backdrop" id="toc-backdrop" hidden></div>
+            <aside class="toc-sidebar" id="toc-sidebar" aria-label="文章目录">
+              <div class="toc-header">
+                <h3>目录</h3>
+                <button type="button" class="toc-toggle" id="toc-close" aria-label="关闭目录">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div class="toc-scroll">
+                <nav class="toc-list" id="toc-list"></nav>
+              </div>
+            </aside>
           </div>
-        </aside>
-      </div>
-    )}
-  </div>
-
-  {self_review && (
-    <div class="self-review" style="max-width: var(--content-width); margin: 0 auto 3rem; padding: 0 var(--pad-x);">
-      <h3>余隙 Self-Review</h3>
-      <div class="self-review-content">
-        {self_review.split('\n').map((line: string) => (
-          line ? <p>{line}</p> : undefined
-        ))}
-      </div>
-      <p class="self-review-sign">— 余隙</p>
+        )
+      }
     </div>
-  )}
 
-  {widget === 'cost-flow-visualizer' && (
-    <div class="post-widget">
-      <CostFlowVisualizer client:only="react" />
-    </div>
-  )}
+    {
+      self_review && (
+        <div class="self-review">
+          <h3>余隙 Self-Review</h3>
+          <div class="self-review-content">
+            {self_review.split('\n').map((line: string) => (line ? <p>{line}</p> : undefined))}
+          </div>
+          <p class="self-review-sign">— 余隙</p>
+        </div>
+      )
+    }
 
-  {widget === 'kruskal-simulator' && (
-    <div class="post-widget">
-      <KruskalSimulator client:only="react" />
-    </div>
-  )}
+  </main>
 
-  {widget === 'dp-transition-matrix' && (
-    <div class="post-widget">
-      <DPTransitionMatrix client:only="react" />
-    </div>
-  )}
-
-  {widget === 'double-path-finder' && (
-    <div class="post-widget">
-      <DoublePathFinder client:only="react" />
-    </div>
-  )}
+  {
+    hasTOC && (
+      <button type="button" class="toc-mobile-toggle" id="toc-open" aria-label="打开目录" hidden>
+        目
+      </button>
+    )
+  }
 
   <Footer />
 </BaseLayout>
 
-{hasTOC && (
-  <button class="toc-desktop-toggle" aria-label="展开目录">目录</button>
-)}
-
 <script is:inline>
-document.addEventListener('DOMContentLoaded', () => {
-  function buildTOC() {
-    const headings = document.querySelectorAll('#post-content h2, #post-content h3');
+  document.addEventListener('DOMContentLoaded', () => {
+    const content = document.getElementById('post-content');
     const tocList = document.getElementById('toc-list');
-    if (!tocList) return;
+    const tocWrap = document.getElementById('toc-wrap');
+    const tocSidebar = document.getElementById('toc-sidebar');
+    const tocOpen = document.getElementById('toc-open');
+    const tocClose = document.getElementById('toc-close');
+    const tocBackdrop = document.getElementById('toc-backdrop');
+    if (!content || !tocList || !tocWrap) return;
 
-    const toc = [];
-    headings.forEach(h => {
+    const headings = content.querySelectorAll('h2, h3');
+    if (headings.length === 0) {
+      tocWrap.remove();
+      tocOpen?.remove();
+      return;
+    }
+
+    const items = [];
+    headings.forEach((h, i) => {
       if (!h.id) {
-        h.id = h.textContent?.replace(/[\W\u4e00-\u9fff]/g, '-').toLowerCase() || '';
+        const base =
+          (h.textContent || 'section')
+            .trim()
+            .toLowerCase()
+            .replace(/[^\w\u4e00-\u9fff]+/g, '-')
+            .replace(/^-+|-+$/g, '') || `h-${i}`;
+        h.id = base;
       }
-      toc.push({
+      items.push({
         id: h.id,
-        text: h.textContent || '',
+        text: (h.textContent || '').trim(),
         level: h.tagName === 'H2' ? 2 : 3,
       });
     });
 
-    if (toc.length === 0) {
-      document.getElementById('toc-sidebar')?.remove();
-      return;
-    }
-
     let html = '<ol>';
-    const h2s = toc.filter(i => i.level === 2);
-    h2s.forEach((item, idx) => {
-      html += `<li><a href="#${item.id}">${item.text}</a>`;
-      const nextH2Idx = h2s.length - 1 === idx ? toc.length : toc.indexOf(h2s[idx + 1]);
-      const h3s = toc.filter(h3 => h3.level === 3 && toc.indexOf(h3) > toc.indexOf(item) && toc.indexOf(h3) < nextH2Idx);
-      if (h3s.length > 0) {
-        html += '<ol>';
-        h3s.forEach(h3 => {
-          html += `<li class="toc-h3"><a href="#${h3.id}">${h3.text}</a></li>`;
-        });
-        html += '</ol>';
-      }
-      html += '</li>';
+    items.forEach((item) => {
+      const cls = item.level === 3 ? ' class="toc-h3"' : '';
+      html += `<li${cls}><a href="#${item.id}">${item.text}</a></li>`;
     });
     html += '</ol>';
     tocList.innerHTML = html;
-  }
 
-  function initTOC() {
-    buildTOC();
+    tocWrap.hidden = false;
+    if (tocOpen) tocOpen.hidden = false;
+    if (tocBackdrop) tocBackdrop.hidden = false;
 
-    const tocSidebar = document.getElementById('toc-sidebar');
-    const toggle = document.querySelector('.toc-toggle');
-    const desktopToggle = document.querySelector('.toc-desktop-toggle');
+    function openDrawer() {
+      tocWrap.classList.add('open');
+      document.documentElement.style.overflow = 'hidden';
+      tocClose?.focus();
+    }
 
-    // Smooth scroll for TOC links
-    document.querySelectorAll('.toc-list a').forEach(a => {
+    function closeDrawer() {
+      tocWrap.classList.remove('open');
+      document.documentElement.style.overflow = '';
+    }
+
+    tocOpen?.addEventListener('click', openDrawer);
+    tocClose?.addEventListener('click', closeDrawer);
+    tocBackdrop?.addEventListener('click', closeDrawer);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && tocWrap.classList.contains('open')) closeDrawer();
+    });
+
+    tocList.querySelectorAll('a').forEach((a) => {
       a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href')?.slice(1) || '';
+        const target = document.getElementById(id);
+        if (!target) return;
         e.preventDefault();
-        const target = document.getElementById(a.getAttribute('href')?.slice(1) || '');
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          history.replaceState(null, '', a.getAttribute('href'));
-        }
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(null, '', `#${id}`);
+        if (window.matchMedia('(max-width: 1099px)').matches) closeDrawer();
       });
     });
 
-    // Active TOC link on scroll
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        const id = entry.target.id;
-        const link = document.querySelector(`.toc-list a[href="#${id}"]`);
-        if (link) {
-          if (entry.isIntersecting) {
-            document.querySelectorAll('.toc-list a').forEach(l => l.classList.remove('active'));
-            link.classList.add('active');
-          }
-        }
-      });
-    }, { rootMargin: '-20% 0px -70% 0px' });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const id = entry.target.id;
+          const link = tocList.querySelector(`a[href="#${CSS.escape(id)}"]`);
+          if (!link) return;
+          tocList.querySelectorAll('a').forEach((l) => l.classList.remove('active'));
+          link.classList.add('active');
+        });
+      },
+      { rootMargin: '-20% 0px -70% 0px' },
+    );
 
-    document.querySelectorAll('#post-content h2, #post-content h3').forEach(h => {
-      if (h.id) observer.observe(h);
-    });
-
-    function collapseTOC() {
-      if (tocSidebar) tocSidebar.classList.add('collapsed');
-      if (desktopToggle) desktopToggle.style.display = 'block';
-      if (toggle) toggle.style.display = 'none';
-    }
-
-    function showTOC() {
-      if (tocSidebar) tocSidebar.classList.remove('collapsed');
-      if (desktopToggle) desktopToggle.style.display = 'none';
-      if (toggle) toggle.style.display = 'flex';
-    }
-
-    if (toggle) toggle.addEventListener('click', collapseTOC);
-    if (desktopToggle) desktopToggle.addEventListener('click', showTOC);
-
-    // Mobile TOC toggle
-    const mobileToggle = document.querySelector('.toc-mobile-toggle');
-    if (mobileToggle) {
-      mobileToggle.addEventListener('click', () => {
-        if (tocSidebar) tocSidebar.classList.toggle('open');
-      });
-    }
-  }
-
-  initTOC();
-});
+    headings.forEach((h) => observer.observe(h));
+  });
 </script>

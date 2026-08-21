@@ -1,45 +1,109 @@
 ---
 import '../styles/global.css';
 import 'katex/dist/katex.css';
+import { ClientRouter } from 'astro:transitions';
+import PlayerShell from '../components/PlayerShell.tsx';
+
+interface Props {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  date?: Date;
+}
+
+const {
+  title,
+  description = '余隙的笔记本。写算法、写数学、写思考过程。',
+  tags = [],
+  date,
+} = Astro.props;
+
+const siteName = '余隙';
+const pageTitle = title ? `${title} · ${siteName}` : `${siteName} · 安静地写，慢慢地读`;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://yvxi.pages.dev').href;
 ---
 
 <!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500,1,400&family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f7f4ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1816" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content={description} />
+    {tags.length > 0 && <meta name="keywords" content={tags.join(', ')} />}
+    {date && <meta property="article:published_time" content={date.toISOString()} />}
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content={title ? 'article' : 'website'} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <title>{pageTitle}</title>
+    <ClientRouter fallback="none" />
+    <script is:inline>
+      (function () {
+        // Always pin an explicit data-theme before first paint so the system
+        // prefers-color-scheme media query cannot flash-override a stored choice.
+        function resolveTheme() {
+          try {
+            var stored = localStorage.getItem('yuxi-theme');
+            if (stored === 'light' || stored === 'dark') return stored;
+          } catch (_) {}
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        try {
+          document.documentElement.setAttribute('data-theme', resolveTheme());
+        } catch (_) {}
+        // Re-apply after ClientRouter swaps so a manual choice never snaps back
+        // to the OS preference on route change.
+        document.addEventListener('astro:after-swap', function () {
+          try {
+            document.documentElement.setAttribute('data-theme', resolveTheme());
+          } catch (_) {}
+        });
+      })();
+    </script>
   </head>
   <body>
-    <slot />
-
-    <!-- Image zoom lightbox -->
-    <div class="zoom-overlay" id="zoomOverlay">
+    <a class="skip" href="#main">跳到正文</a>
+    <div class="site-shell">
+      <slot />
+    </div>
+    <div transition:persist="player-shell">
+      <PlayerShell client:load />
+    </div>
+    <script>
+      import '../lib/player/bindings';
+    </script>
+    <div class="zoom-overlay" id="zoomOverlay" role="dialog" aria-modal="true" aria-label="图片预览">
       <img id="zoomImage" src="" alt="" />
     </div>
 
     <script>
       const overlay = document.getElementById('zoomOverlay');
-      const zoomImg = document.getElementById('zoomImage');
+      const zoomImg = document.getElementById('zoomImage') as HTMLImageElement | null;
 
-      document.querySelectorAll('.zoomable').forEach(img => {
+      document.querySelectorAll('.zoomable').forEach((img) => {
         img.addEventListener('click', () => {
+          if (!(img instanceof HTMLImageElement) || !overlay || !zoomImg) return;
           zoomImg.src = img.src;
           zoomImg.alt = img.alt;
           overlay.classList.add('active');
         });
       });
 
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          overlay.classList.remove('active');
-        }
+      overlay?.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('active');
       });
 
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && overlay.classList.contains('active')) {
+        if (e.key === 'Escape' && overlay?.classList.contains('active')) {
           overlay.classList.remove('active');
         }
       });
@@ -47,17 +111,17 @@ import 'katex/dist/katex.css';
 
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script>
+      // @ts-expect-error mermaid loaded via CDN
       mermaid.initialize({ startOnLoad: false, theme: 'neutral' });
-      document.querySelectorAll('.mermaid').forEach(el => {
+      document.querySelectorAll('.mermaid').forEach((el) => {
+        // @ts-expect-error mermaid loaded via CDN
         mermaid.run({ nodes: [el] });
       });
     </script>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-
-    <script is:inline>
-      const kaomojis = ['(๑•̀ㅂ•́)و✧', '(✿◠‿◠)', 'o(*￣▽￣*)o', '(⁄ ⁄•⁄ω⁄•⁄ ⁄)', '(｡･ω･｡)', '(´｡• ᵕ •｡´)', '(๑´ㅂ`๑)', '♪(^∇^*)', '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧', '(*╯3╰)'];
-      document.querySelector('.site-title').textContent = kaomojis[Math.floor(Math.random() * kaomojis.length)];
-    </script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+    />
   </body>
 </html>

@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yvxi-party",
+  "main": "workers/party-room.ts",
+  "compatibility_date": "2026-07-24",
+  "durable_objects": {
+    "bindings": [
+      { "name": "PARTY_ROOM", "class_name": "PartyRoomDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PartyRoomDO"] }
+  ]
+}

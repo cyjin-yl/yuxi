@@ -1,0 +1,126 @@
+---
+import BaseLayout from '../../../layouts/base.astro';
+import Header from '../../../components/header.astro';
+import Footer from '../../../components/footer.astro';
+
+export function getStaticPaths() {
+  return [{ params: { id: '0' } }];
+}
+---
+
+<BaseLayout title="歌曲" description="网易云歌曲详情与评论。">
+  <Header currentPath="/collections/" />
+
+  <main id="main">
+    <div id="song-page" class="song-page" data-state="loading">
+      <p class="netease-loading">正在加载歌曲…</p>
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<script is:inline data-astro-rerun>
+  (function () {
+    var root = document.getElementById('song-page');
+    if (!root) return;
+    var m = location.pathname.match(/\/song\/(\d+)/);
+    if (!m) {
+      root.innerHTML = '<p class="netease-loading">无效的歌曲链接。</p>';
+      return;
+    }
+    var id = m[1];
+    if (root.dataset.songId === id) return; // already rendered for this song
+    root.dataset.songId = id;
+    root.dataset.state = 'loading';
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function fmtDate(ts) {
+      if (!ts) return '';
+      var d = new Date(ts);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function renderSong(song) {
+      var artist = (song.ar || []).map(function (a) { return a.name; }).join(' / ');
+      var album = song.al ? song.al.name : '';
+      var pic = song.al && song.al.picUrl ? song.al.picUrl : '';
+      var dur = song.dt ? Math.floor(song.dt / 60000) + ':' + String(Math.floor((song.dt % 60000) / 1000)).padStart(2, '0') : '';
+      var html = '';
+      html += '<section class="song-hero">';
+      html += pic ? '<img class="song-hero-art" src="' + esc(pic) + '" alt="" />' : '<div class="song-hero-art song-hero-art-empty"></div>';
+      html += '<div class="song-hero-info">';
+      html += '<h1 class="song-hero-title">' + esc(song.name) + '</h1>';
+      if (artist) html += '<p class="song-hero-artist">' + esc(artist) + '</p>';
+      if (album) html += '<p class="song-hero-album">' + esc(album) + (dur ? ' · ' + dur : '') + '</p>';
+      html += '<button type="button" class="collection-btn song-play-btn" data-play-netease-song="' + esc(id) + '"';
+      html += ' data-title="' + esc(song.name) + '" data-artist="' + esc(artist) + '"';
+      if (pic) html += ' data-cover="' + esc(pic) + '"';
+      html += '>播放这首歌</button>';
+      html += '</div></section>';
+      html += '<section class="song-comments" id="song-comments"><p class="netease-loading">正在加载评论…</p></section>';
+      root.innerHTML = html;
+      root.dataset.state = 'ready';
+    }
+
+    function renderComments(body) {
+      var box = document.getElementById('song-comments');
+      if (!box) return;
+      var hot = body.hotComments || [];
+      var comments = body.comments || [];
+      var html = '<h2 class="song-comments-title">评论' + (body.total ? ' · ' + body.total : '') + '</h2>';
+      if (hot.length) {
+        html += '<h3 class="song-comments-sub">热门评论</h3>';
+        hot.slice(0, 5).forEach(function (c) { html += commentHtml(c, true); });
+      }
+      if (comments.length) {
+        html += '<h3 class="song-comments-sub">最新评论</h3>';
+        comments.forEach(function (c) { html += commentHtml(c, false); });
+      }
+      if (!hot.length && !comments.length) {
+        html += '<p class="netease-loading">暂无评论。</p>';
+      }
+      box.innerHTML = html;
+    }
+
+    function commentHtml(c, isHot) {
+      var avatar = c.user && c.user.avatarUrl ? c.user.avatarUrl : '';
+      var name = c.user ? c.user.nickname : '';
+      var html = '<article class="song-comment' + (isHot ? ' is-hot' : '') + '">';
+      html += avatar ? '<img class="song-comment-avatar" src="' + esc(avatar) + '" alt="" loading="lazy" />' : '<span class="song-comment-avatar song-comment-avatar-empty"></span>';
+      html += '<div class="song-comment-body">';
+      html += '<div class="song-comment-head"><span class="song-comment-name">' + esc(name) + '</span>';
+      html += '<span class="song-comment-date">' + fmtDate(c.time) + '</span></div>';
+      html += '<p class="song-comment-text">' + esc(c.content) + '</p>';
+      if (c.likedCount) html += '<span class="song-comment-likes">♥ ' + c.likedCount + '</span>';
+      html += '</div></article>';
+      return html;
+    }
+
+    fetch('/netease/song/' + id)
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (body) {
+        var song = (body.songs || [])[0];
+        if (!song) {
+          root.innerHTML = '<p class="netease-loading">找不到这首歌。</p>';
+          return;
+        }
+        renderSong(song);
+        return fetch('/netease/comments/' + id + '?limit=20').then(function (r) {
+          return r.ok ? r.json() : { hotComments: [], comments: [], total: 0 };
+        });
+      })
+      .then(function (comments) {
+        if (comments) renderComments(comments);
+      })
+      .catch(function () {
+        if (root.dataset.state === 'loading') {
+          root.innerHTML = '<p class="netease-loading">加载失败，请稍后刷新。</p>';
+        }
+      });
+  })();
+</script>

@@ -2,15 +2,104 @@
 export interface Props {
   currentPath?: string;
 }
+
 const { currentPath = '' } = Astro.props;
+
+const links = [
+  { href: '/blog/', label: '博客', match: '/blog/' },
+  { href: '/collections/', label: '曲库', match: '/collections/' },
+  { href: '/tags/', label: '标签', match: '/tags/' },
+  { href: '/about/', label: '关于', match: '/about/' },
+];
 ---
 
 <header class="nav">
-  <a href="/" class="site-title">余隙</a>
-  <nav class="nav-links">
-    <a href="/blog/" class:active={currentPath.startsWith('/blog/')}>博客</a>
-    <a href="/songs/" class:active={currentPath.startsWith('/songs/')}>歌曲</a>
-    <a href="/tags/" class:active={currentPath.startsWith('/tags/')}>标签</a>
-    <a href="/about/" class:active={currentPath.startsWith('/about/')}>关于</a>
+  <a href="/" class="site-title" id="site-title" title="余隙">余隙</a>
+  <nav class="nav-links" aria-label="站点导航">
+    {
+      links.map((link) => (
+        <a
+          href={link.href}
+          class:list={[{ active: currentPath.startsWith(link.match) }]}
+          aria-current={currentPath.startsWith(link.match) ? 'page' : undefined}
+        >
+          {link.label}
+        </a>
+      ))
+    }
   </nav>
+  <div class="nav-actions">
+    <button
+      type="button"
+      class="theme-toggle"
+      id="theme-toggle"
+      aria-label="切换深色模式"
+      aria-pressed="false"
+      title="切换主题"
+    >
+      <span class="theme-toggle-track" aria-hidden="true">
+        <span class="theme-toggle-icon theme-toggle-sun">☀</span>
+        <span class="theme-toggle-icon theme-toggle-moon">☾</span>
+        <span class="theme-toggle-thumb"></span>
+      </span>
+    </button>
+  </div>
 </header>
+
+<script is:inline data-astro-rerun>
+  (function () {
+    var title = document.getElementById('site-title');
+    if (title) {
+      var kaomojis = [
+        '(๑•̀ㅂ•́)و✧',
+        '(✿◠‿◠)',
+        'o(*￣▽￣*)o',
+        '(⁄ ⁄•⁄ω⁄•⁄ ⁄)',
+        '(｡･ω･｡)',
+        '(´｡• ᵕ •｡´)',
+        '(๑´ㅂ`๑)',
+        '♪(^∇^*)',
+        '(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧',
+        '(*╯3╰)',
+        '(´▽`ʃ♡ƪ)',
+        'ヽ(✿ﾟ▽ﾟ)ノ',
+      ];
+      title.textContent = kaomojis[Math.floor(Math.random() * kaomojis.length)];
+    }
+
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+
+    // Manual choice in localStorage always wins. Never fall back to the OS
+    // preference once the user has toggled — that wiped the choice on every
+    // ClientRouter navigation when data-theme briefly went missing.
+    function resolveTheme() {
+      try {
+        var stored = localStorage.getItem('yuxi-theme');
+        if (stored === 'light' || stored === 'dark') return stored;
+      } catch (_) {}
+      var attr = document.documentElement.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function apply(next) {
+      document.documentElement.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem('yuxi-theme', next);
+      } catch (_) {}
+      btn.dataset.state = next;
+      btn.setAttribute('aria-pressed', next === 'dark' ? 'true' : 'false');
+      btn.setAttribute('aria-label', next === 'dark' ? '切换浅色模式' : '切换深色模式');
+    }
+
+    if (!btn.dataset.bound) {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', function () {
+        apply(resolveTheme() === 'dark' ? 'light' : 'dark');
+      });
+    }
+
+    apply(resolveTheme());
+  })();
+</script>

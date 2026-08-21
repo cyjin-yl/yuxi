@@ -1,0 +1,274 @@
+---
+import BaseLayout from '../../layouts/base.astro';
+import Header from '../../components/header.astro';
+import Footer from '../../components/footer.astro';
+---
+
+<BaseLayout title="曲库" description="通过服务端代理浏览与播放网易云歌单。">
+  <Header currentPath="/collections/" />
+
+  <main id="main" class="home">
+    <div class="home-intro">
+      <h1>曲库</h1>
+      <p>网易云歌单经服务端代理加载与播放；浏览器不接触账户凭据。本地红心歌单只保存在本机。</p>
+    </div>
+
+    <section class="netease-section local-likes-section" aria-label="本地喜欢的音乐" id="local-likes-section" hidden>
+      <h2 class="netease-section-title">本地 · 我喜欢的音乐</h2>
+      <p class="netease-section-note">保存在本浏览器 localStorage，与网易云账号歌单无关；换设备或清站点数据会丢失。</p>
+      <div id="local-likes-grid" class="netease-grid"></div>
+    </section>
+
+    <section class="netease-section" aria-label="网易云歌单">
+      <h2 class="netease-section-title">网易云歌单</h2>
+      <div id="netease-playlists" class="netease-grid" data-state="loading">
+        <p class="netease-loading">正在加载歌单…</p>
+      </div>
+    </section>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<script is:inline data-astro-rerun>
+  (function () {
+    var root = document.getElementById('netease-playlists');
+    if (!root || root.dataset.loaded === '1') return;
+    root.dataset.loaded = '1';
+    var preferredId = '18186789918';
+    var qrKey = '';
+    var qrTimer = 0;
+
+    function stopQrTimer() {
+      if (qrTimer) window.clearInterval(qrTimer);
+      qrTimer = 0;
+    }
+
+    function card(p) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      if (p.localLiked) {
+        button.className = 'netease-card netease-card-liked';
+        button.setAttribute('data-play-liked', '1');
+        button.setAttribute('aria-label', '播放本地喜欢的音乐');
+      } else {
+        button.className = 'netease-card';
+        button.setAttribute('data-play-netease-playlist', String(p.id));
+        button.setAttribute('aria-label', '播放歌单 ' + p.name);
+      }
+
+      var coverWrap = document.createElement('span');
+      coverWrap.className = 'netease-cover-wrap';
+      if (p.localLiked) {
+        var badge = document.createElement('span');
+        badge.className = 'local-likes-badge';
+        badge.textContent = '本地';
+        coverWrap.appendChild(badge);
+      }
+      var cover = document.createElement('img');
+      cover.className = 'netease-cover';
+      cover.alt = '';
+      cover.loading = 'lazy';
+      cover.src = p.coverUrl || '';
+      coverWrap.appendChild(cover);
+
+      var title = document.createElement('span');
+      title.className = 'netease-title-marquee';
+      var titleText = document.createElement('span');
+      titleText.className = 'netease-title-text';
+      titleText.textContent = p.name;
+      title.appendChild(titleText);
+
+      button.appendChild(coverWrap);
+      button.appendChild(title);
+      if (p.localLiked) {
+        var sub = document.createElement('span');
+        sub.className = 'local-likes-sub';
+        sub.textContent = (p.trackCount || 0) + ' 首 · 仅本浏览器';
+        button.appendChild(sub);
+      }
+      return button;
+    }
+
+    function renderLocalLikes() {
+      var section = document.getElementById('local-likes-section');
+      var grid = document.getElementById('local-likes-grid');
+      if (!section || !grid) return;
+      var liked = [];
+      try {
+        liked = JSON.parse(localStorage.getItem('yuxi-liked-tracks-v1') || '[]');
+        if (!Array.isArray(liked)) liked = [];
+      } catch (_) {
+        liked = [];
+      }
+      grid.innerHTML = '';
+      if (!liked.length) {
+        section.hidden = true;
+        return;
+      }
+      section.hidden = false;
+      var first = liked[0] || {};
+      grid.appendChild(card({
+        id: 'liked-local',
+        name: '我喜欢的音乐',
+        coverUrl: first.coverUrl || '',
+        trackCount: liked.length,
+        localLiked: true,
+      }));
+      requestAnimationFrame(function () {
+        grid.querySelectorAll('.netease-title-marquee').forEach(function (wrap) {
+          var text = wrap.firstElementChild;
+          if (!text) return;
+          var overflow = text.scrollWidth - wrap.clientWidth;
+          if (overflow > 4) {
+            text.style.setProperty('--netease-marquee-distance', overflow + 'px');
+            text.style.setProperty('--netease-marquee-duration', Math.max(6, overflow / 36) + 's');
+            text.dataset.overflow = '1';
+          }
+        });
+      });
+    }
+
+    function measureMarquees() {
+      root.querySelectorAll('.netease-title-marquee').forEach(function (wrap) {
+        var text = wrap.firstElementChild;
+        if (!text) return;
+        var overflow = text.scrollWidth - wrap.clientWidth;
+        if (overflow > 4) {
+          text.style.setProperty('--netease-marquee-distance', overflow + 'px');
+          text.style.setProperty('--netease-marquee-duration', Math.max(6, overflow / 36) + 's');
+          text.dataset.overflow = '1';
+        }
+      });
+    }
+
+    function renderLogin() {
+      stopQrTimer();
+      root.dataset.state = 'login';
+      root.className = 'netease-grid netease-grid-login';
+      root.innerHTML =
+        '<div class="netease-login-card">' +
+        '<h3>网易云登录已失效</h3>' +
+        '<p>用网易云音乐 App 扫码并确认登录；凭据只写入服务端，不进入浏览器。</p>' +
+        '<div id="netease-qr-box" class="netease-qr-box"><p class="netease-loading">正在生成二维码…</p></div>' +
+        '<p id="netease-qr-status" class="netease-qr-status">准备二维码…</p>' +
+        '<button id="netease-qr-refresh" type="button" class="collection-btn">重新生成二维码</button>' +
+        '</div>';
+      var refresh = document.getElementById('netease-qr-refresh');
+      if (refresh) refresh.addEventListener('click', startQrLogin);
+      startQrLogin();
+    }
+
+    function setQrStatus(text) {
+      var status = document.getElementById('netease-qr-status');
+      if (status) status.textContent = text;
+    }
+
+    function startQrLogin() {
+      stopQrTimer();
+      var refresh = document.getElementById('netease-qr-refresh');
+      if (refresh) refresh.setAttribute('disabled', '');
+      setQrStatus('正在生成二维码…');
+      fetch('/netease/auth/qr/create', { method: 'POST' })
+        .then(function (r) {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then(function (body) {
+          qrKey = body.key || '';
+          var box = document.getElementById('netease-qr-box');
+          if (box) {
+            box.innerHTML = '';
+            var img = document.createElement('img');
+            img.className = 'netease-qr-img';
+            img.alt = '网易云登录二维码';
+            img.src = body.qrImg || '';
+            box.appendChild(img);
+          }
+          setQrStatus('请用网易云音乐 App 扫码');
+          pollQrLogin();
+        })
+        .catch(function () {
+          setQrStatus('二维码生成失败，请重试。');
+          if (refresh) refresh.removeAttribute('disabled');
+        });
+    }
+
+    function pollQrLogin() {
+      qrTimer = window.setInterval(checkQrLogin, 2500);
+      checkQrLogin();
+    }
+
+    function checkQrLogin() {
+      if (!root.isConnected || !qrKey) {
+        stopQrTimer();
+        return;
+      }
+      fetch('/netease/auth/qr/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: qrKey }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (body) {
+          if (body.code === 800) {
+            stopQrTimer();
+            setQrStatus('二维码已过期，请重新生成。');
+            var refresh = document.getElementById('netease-qr-refresh');
+            if (refresh) refresh.removeAttribute('disabled');
+            return;
+          }
+          if (body.code === 801) setQrStatus('等待扫码…');
+          if (body.code === 802) setQrStatus('已扫码，请在手机上确认登录…');
+          if (body.code === 803 && body.authenticated) {
+            stopQrTimer();
+            setQrStatus('登录成功，正在恢复歌单…');
+            window.setTimeout(loadPlaylists, 700);
+          }
+        })
+        .catch(function () {
+          setQrStatus('网络波动，继续等待扫码…');
+        });
+    }
+
+    function loadPlaylists() {
+      stopQrTimer();
+      root.dataset.state = 'loading';
+      root.className = 'netease-grid';
+      root.innerHTML = '<p class="netease-loading">正在加载歌单…</p>';
+      fetch('/netease/playlists/mine')
+        .then(function (r) {
+          if (r.status === 401) {
+            renderLogin();
+            return null;
+          }
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then(function (body) {
+          if (!body) return;
+          root.innerHTML = '';
+          root.dataset.state = 'ready';
+          renderLocalLikes();
+          var list = Array.isArray(body.playlists) ? body.playlists.filter(function (p) {
+            return p && p.trackCount > 0;
+          }) : [];
+          list.sort(function (a, b) {
+            return Number(String(b.id) === preferredId) - Number(String(a.id) === preferredId);
+          });
+          if (!list.length) {
+            root.innerHTML = '<p class="netease-loading">账户里还没有网易云歌单。</p>';
+            return;
+          }
+          list.forEach(function (p) { root.appendChild(card(p)); });
+          requestAnimationFrame(measureMarquees);
+        })
+        .catch(function () {
+          root.dataset.state = 'error';
+          root.innerHTML = '<p class="netease-loading">歌单加载失败，请稍后刷新。</p>';
+        });
+    }
+
+    loadPlaylists();
+  })();
+</script>

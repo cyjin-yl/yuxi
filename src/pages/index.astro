@@ -2,43 +2,32 @@
 import BaseLayout from '../layouts/base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
-import { getCollection } from 'astro:content';
+import PostList from '../components/PostList.astro';
+import { getPublishedPosts, HOME_POST_COUNT } from '../lib/posts';
 
-const posts = (await getCollection('blog'))
-  .filter((post) => !post.data.draft)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, 10);
+const all = await getPublishedPosts();
+const posts = all.slice(0, HOME_POST_COUNT);
+const total = all.length;
 ---
 
 <BaseLayout>
   <Header currentPath="/" />
 
-  <main class="home">
+  <main id="main" class="home">
     <div class="home-intro">
       <h1>余隙</h1>
-      <p>余隙的笔记本。写算法、写数学、写思考过程。</p>
+      <p>余隙的笔记本。写算法、写数学、写思考过程。不急，慢慢看就好。</p>
     </div>
 
-    <ul class="post-list">
-      {posts.map((post) => (
-        <li class="post-item">
-          <div class="post-item-title">
-            <a href={`/blog/${post.id}/`}>{post.data.title}</a>
-          </div>
-          <div class="post-item-meta">
-            <time>{post.data.date.toLocaleDateString('zh-CN', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-            })}</time>
-            {post.data.tags?.map(tag => (
-              <a href={`/tags/${tag}/`} class="tag">{tag}</a>
-            ))}
-          </div>
-          {post.data.description && <p class="post-item-desc">{post.data.description}</p>}
-        </li>
-      ))}
-    </ul>
+    <PostList posts={posts} />
+
+    {
+      total > HOME_POST_COUNT && (
+        <div class="section-foot">
+          <a href="/blog/">全部文章 →</a>
+        </div>
+      )
+    }
   </main>
 
   <Footer />

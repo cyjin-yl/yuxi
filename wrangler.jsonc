@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yvxi",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-07-24",
+  "kv_namespaces": [
+    {
+      "binding": "NETEASE_AUTH",
+      "id": "bfaf5cbd042d45c8a12db9e8473e0563"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "PARTY_ROOM", "class_name": "PartyRoomDO", "script_name": "yvxi-party" }
+    ]
+  }
+}

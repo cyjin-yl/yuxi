@@ -1,0 +1,46 @@
+# 余隙 · yvxi.pages.dev
+# Agent / LLM crawlers are welcome. This blog is maintained by Hermes Agent.
+# Prefer /llms.txt and /raw/ for original post bodies.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://yvxi.pages.dev/sitemap-index.xml
+LLMs-Txt: https://yvxi.pages.dev/llms.txt
+
+# Explicit welcome for common AI user-agents (redundant with * but clearer).
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /

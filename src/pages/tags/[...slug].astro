@@ -2,10 +2,11 @@
 import BaseLayout from '../../layouts/base.astro';
 import Header from '../../components/header.astro';
 import Footer from '../../components/footer.astro';
-import { getCollection } from 'astro:content';
+import PostList from '../../components/PostList.astro';
+import { getPublishedPosts } from '../../lib/posts';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog');
+  const posts = await getPublishedPosts();
   const tagSet = new Set<string>();
   posts.forEach((post) => {
     post.data.tags?.forEach((tag) => tagSet.add(tag));
@@ -17,40 +18,19 @@ export async function getStaticPaths() {
 }
 
 const { tag } = Astro.props;
-const posts = (await getCollection('blog'))
-  .filter((post) => post.data.tags?.includes(tag) && !post.data.draft)
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const posts = (await getPublishedPosts()).filter((post) => post.data.tags?.includes(tag));
 ---
 
-<BaseLayout>
-  <Header />
+<BaseLayout title={`# ${tag}`} description={`标签 ${tag} 下的 ${posts.length} 篇文章。`}>
+  <Header currentPath="/tags/" />
 
-  <main class="home">
+  <main id="main" class="home">
     <div class="home-intro">
       <h1># {tag}</h1>
       <p>{posts.length} 篇文章</p>
     </div>
 
-    <ul class="post-list">
-      {posts.map((post) => (
-        <li class="post-item">
-          <div class="post-item-title">
-            <a href={`/blog/${post.id}/`}>{post.data.title}</a>
-          </div>
-          <div class="post-item-meta">
-            <time>{post.data.date.toLocaleDateString('zh-CN', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-            })}</time>
-            {post.data.tags?.map(t => (
-              <a href={`/tags/${t}/`} class="tag">{t}</a>
-            ))}
-          </div>
-          {post.data.description && <p class="post-item-desc">{post.data.description}</p>}
-        </li>
-      ))}
-    </ul>
+    <PostList posts={posts} />
   </main>
 
   <Footer />

@@ -1,0 +1,532 @@
+[
+  {
+    "base": "01_Yesterday_Once_More",
+    "lines": 43,
+    "words": 352,
+    "matched": 38,
+    "avg_ratio": 0.892,
+    "overlaps": 1,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "02_Hey_Jude",
+    "lines": 31,
+    "words": 452,
+    "matched": 20,
+    "avg_ratio": 0.913,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "03_My_Heart_Will_Go_On",
+    "lines": 16,
+    "words": 335,
+    "matched": 16,
+    "avg_ratio": 0.931,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "04_Auld_Lang_Syne",
+    "lines": 16,
+    "words": 159,
+    "matched": 13,
+    "avg_ratio": 0.816,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "05_Right_Here_Waiting",
+    "lines": 20,
+    "words": 294,
+    "matched": 15,
+    "avg_ratio": 0.979,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "06_Do_Re_Mi",
+    "lines": 19,
+    "words": 249,
+    "matched": 7,
+    "avg_ratio": 0.582,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "07_Say_You_Say_Me",
+    "lines": 26,
+    "words": 199,
+    "matched": 20,
+    "avg_ratio": 0.916,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "08_Red_River_Valley",
+    "lines": 16,
+    "words": 215,
+    "matched": 10,
+    "avg_ratio": 0.966,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "09_Take_Me_to_Your_Heart",
+    "lines": 18,
+    "words": 379,
+    "matched": 12,
+    "avg_ratio": 0.979,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "10_Turkey_in_the_Straw",
+    "lines": 15,
+    "words": 150,
+    "matched": 3,
+    "avg_ratio": 0.745,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "11_Seasons_in_the_Sun",
+    "lines": 42,
+    "words": 519,
+    "matched": 23,
+    "avg_ratio": 0.856,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "12_Big_Big_World",
+    "lines": 22,
+    "words": 270,
+    "matched": 12,
+    "avg_ratio": 0.979,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "13_Scarborough_Fair",
+    "lines": 16,
+    "words": 212,
+    "matched": 14,
+    "avg_ratio": 0.837,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "14_Take_Me_Home_Country_Roads",
+    "lines": 24,
+    "words": 176,
+    "matched": 18,
+    "avg_ratio": 1.0,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "15_Lemon_Tree",
+    "lines": 25,
+    "words": 441,
+    "matched": 19,
+    "avg_ratio": 0.956,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "16_Happy_Days_Are_Here_Again",
+    "lines": 15,
+    "words": 178,
+    "matched": 15,
+    "avg_ratio": 0.957,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "17_You_Raise_Me_Up",
+    "lines": 25,
+    "words": 221,
+    "matched": 20,
+    "avg_ratio": 0.929,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "18_My_Love",
+    "lines": 31,
+    "words": 411,
+    "matched": 16,
+    "avg_ratio": 0.906,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "19_Mockingbird_Hill",
+    "lines": 16,
+    "words": 267,
+    "matched": 9,
+    "avg_ratio": 0.804,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "20_Days_of_My_Past",
+    "lines": 16,
+    "words": 308,
+    "matched": 5,
+    "avg_ratio": 0.66,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "21_Can_You_Feel_the_Love_Tonight",
+    "lines": 24,
+    "words": 352,
+    "matched": 13,
+    "avg_ratio": 0.845,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "22_Rhythm_of_the_Rain",
+    "lines": 24,
+    "words": 245,
+    "matched": 12,
+    "avg_ratio": 0.899,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "23_Mothers_Day_Song",
+    "lines": 12,
+    "words": 63,
+    "matched": 7,
+    "avg_ratio": 0.545,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "24_Heal_the_World",
+    "lines": 32,
+    "words": 600,
+    "matched": 23,
+    "avg_ratio": 0.914,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "25_I_Believe_I_Can_Fly",
+    "lines": 28,
+    "words": 361,
+    "matched": 24,
+    "avg_ratio": 0.984,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "26_Memory",
+    "lines": 24,
+    "words": 179,
+    "matched": 7,
+    "avg_ratio": 0.585,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "27_Try_Everything",
+    "lines": 22,
+    "words": 539,
+    "matched": 13,
+    "avg_ratio": 0.864,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "28_Ive_Been_Working_on_the_Railroad",
+    "lines": 22,
+    "words": 241,
+    "matched": 22,
+    "avg_ratio": 0.933,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "29_Moon_River",
+    "lines": 10,
+    "words": 121,
+    "matched": 10,
+    "avg_ratio": 0.919,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "30_The_Sound_of_Silence",
+    "lines": 35,
+    "words": 232,
+    "matched": 33,
+    "avg_ratio": 0.916,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "31_Dream_It_Possible",
+    "lines": 26,
+    "words": 276,
+    "matched": 18,
+    "avg_ratio": 0.902,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "32_Bridge_over_Troubled_Water",
+    "lines": 32,
+    "words": 341,
+    "matched": 32,
+    "avg_ratio": 0.957,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "33_What_a_Wonderful_World",
+    "lines": 14,
+    "words": 125,
+    "matched": 6,
+    "avg_ratio": 0.897,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "34_Somewhere_over_the_Rainbow",
+    "lines": 13,
+    "words": 155,
+    "matched": 10,
+    "avg_ratio": 0.775,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3",
+      "device": "cuda",
+      "compute_type": "int8_float16",
+      "prompted": true
+    }
+  },
+  {
+    "base": "35_Lean_on_Me",
+    "lines": 20,
+    "words": 287,
+    "matched": 20,
+    "avg_ratio": 0.974,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "36_Stand_by_Me",
+    "lines": 12,
+    "words": 204,
+    "matched": 12,
+    "avg_ratio": 0.96,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "37_Thats_What_Friends_Are_For",
+    "lines": 21,
+    "words": 549,
+    "matched": 15,
+    "avg_ratio": 0.93,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "38_Youve_Got_a_Friend_in_Me",
+    "lines": 24,
+    "words": 192,
+    "matched": 18,
+    "avg_ratio": 0.848,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "39_When_You_Wish_upon_a_Star",
+    "lines": 12,
+    "words": 110,
+    "matched": 10,
+    "avg_ratio": 0.936,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  },
+  {
+    "base": "40_How_Far_Ill_Go",
+    "lines": 28,
+    "words": 265,
+    "matched": 28,
+    "avg_ratio": 0.974,
+    "overlaps": 0,
+    "model": {
+      "model": "large-v3-turbo",
+      "device": "cuda",
+      "compute_type": "int8_float16"
+    }
+  }
+]

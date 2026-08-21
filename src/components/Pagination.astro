@@ -1,0 +1,54 @@
+---
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  /** Path for page 1, e.g. `/blog/` */
+  indexPath: string;
+  /** Path prefix for pages 2+, e.g. `/blog/page` → `/blog/page/2/` */
+  pageBasePath: string;
+}
+
+const { currentPage, totalPages, indexPath, pageBasePath } = Astro.props;
+
+if (totalPages <= 1) return;
+
+function hrefFor(page: number) {
+  if (page <= 1) {
+    const root = indexPath.endsWith('/') ? indexPath : `${indexPath}/`;
+    return root;
+  }
+  const root = pageBasePath.replace(/\/$/, '');
+  return `${root}/${page}/`;
+}
+
+const prev = currentPage > 1 ? hrefFor(currentPage - 1) : null;
+const next = currentPage < totalPages ? hrefFor(currentPage + 1) : null;
+---
+
+<nav class="pagination" aria-label="分页">
+  {
+    prev ? (
+      <a href={prev} rel="prev">
+        ← 上一页
+      </a>
+    ) : (
+      <span class="disabled" aria-disabled="true">
+        ← 上一页
+      </span>
+    )
+  }
+  <p class="pagination-status">
+    第 {currentPage} / {totalPages} 页
+  </p>
+  {
+    next ? (
+      <a href={next} rel="next">
+        下一页 →
+      </a>
+    ) : (
+      <span class="disabled" aria-disabled="true">
+        下一页 →
+      </span>
+    )
+  }
+</nav>

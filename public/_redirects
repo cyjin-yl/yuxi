@@ -1,0 +1,6 @@
+# Legacy song routes → NetEase collection home
+/songs        /collections/  301
+/songs/       /collections/  301
+/songs/:slug  /collections/  301
+/songs/:slug/ /collections/  301
+/song/*       /song/0/       200
