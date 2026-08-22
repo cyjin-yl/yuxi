@@ -1,10 +1,11 @@
 import QRCode from "qrcode";
 
-interface Env {
-  NETEASE_IMPORT_TOKEN: string;
-  NETEASE_AUTH: KVNamespace;
-  PARTY_ROOM: DurableObjectNamespace;
-}
+ interface Env {
+   NETEASE_IMPORT_TOKEN: string;
+   NETEASE_AUTH: KVNamespace;
+   PARTY_ROOM: DurableObjectNamespace;
+   PARTY_INDEX: DurableObjectNamespace;
+ }
 
 const ID = /^[1-9][0-9]{0,19}$/;
 const API = "https://music.163.com";
@@ -226,28 +227,21 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
   const body: Record<string, unknown> =
     request.method === "POST" ? (asRecord(await request.json().catch(() => ({}))) ?? {}) : {};
   const actorId = typeof body.id === "string" ? body.id : "";
-
-  // GET /netease/party — list active rooms from KV index.
+  // GET /netease/party — list active rooms from the PartyIndexDO singleton.
+  // Reads only — never touches KV, so free-tier write quota is irrelevant.
   if (parts[2] === undefined && request.method === "GET") {
-    const listing = await env.NETEASE_AUTH.list({ prefix: "party-idx:", limit: 100 });
-    const rooms: { code: string; name: string; members: number; host: boolean }[] = [];
-    for (const key of listing.keys) {
-      const code = key.name.slice("party-idx:".length);
-      try {
-        const meta = JSON.parse((await env.NETEASE_AUTH.get(key.name)) || "{}") as { name?: string; members?: number; hostId?: string };
-        if ((meta.members || 0) > 0) rooms.push({ code, name: meta.name || "一起听", members: meta.members || 0, host: meta.hostId === actorId });
-      } catch { /* skip corrupt */ }
-    }
-    rooms.sort((a, b) => b.members - a.members);
-    return json({ rooms });
+    const indexStub = env.PARTY_INDEX.get(env.PARTY_INDEX.idFromName("INDEX"));
+    const resp = await indexStub.fetch(new Request(`https://idx/list?actorId=${encodeURIComponent(actorId)}`));
+    return resp;
   }
 
   // POST /netease/party/create
   if (parts[2] === "create" && request.method === "POST") {
     if (!actorId) return json({ error: "missing_id" }, 400);
-    let code = newRoomCode();
-    // Retry if code collision in KV index
-    for (let i = 0; i < 5 && (await env.NETEASE_AUTH.get(`party-idx:${code}`)); i++) code = newRoomCode();
+    const code = newRoomCode();
+    // No KV collision check — the index DO uses code as primary key; if it
+    // already exists, the upsert overwrites (last-create-wins on a true
+    // duplicate code, which is astronomically rare with 4 alphanumeric chars).
     const stub = env.PARTY_ROOM.get(env.PARTY_ROOM.idFromName(code));
     const resp = await stub.fetch(new Request(`https://do/create?code=${code}`, {
       method: "POST",
@@ -256,12 +250,21 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
     }));
     if (!resp.ok) return resp;
     const room = await resp.json() as Record<string, unknown>;
-    // Discovery index only — a failed write (e.g. free-tier daily quota)
-    // must not fail the room operation itself; the DO holds the real state.
+    // Register in the index DO. Failures here don't break the room operation
+    // — the room still exists in PARTY_ROOM, just won't appear in /list.
     try {
-      await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
-        name: room.name, members: (room.members as unknown[]).length, hostId: room.hostId,
-      }), { expirationTtl: 86400 });
+      const indexStub = env.PARTY_INDEX.get(env.PARTY_INDEX.idFromName("INDEX"));
+      await indexStub.fetch(new Request("https://idx/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          name: room.name,
+          hostId: room.hostId,
+          members: (room.members as unknown[]).length,
+          updatedAt: Date.now(),
+        }),
+      }));
     } catch { /* index stale is acceptable */ }
     return json(room);
   }
@@ -276,23 +279,27 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
     headers: { "Content-Type": "application/json" },
     body: request.method === "POST" ? JSON.stringify(body) : undefined,
   }));
-  // Update KV index ONLY on real membership changes. Heartbeats arrive every
-  // 2.5s per member; writing the index each time burned through the daily KV
-  // write quota (1k/day free tier) in under an hour with two open tabs.
-  // Presence freshness is DO-owned (lastSeen + MEMBER_TIMEOUT pruning); the
-  // index only needs room discovery metadata, which changes on join/leave/
-  // create. The 24h TTL on the index entry bounds staleness if a leave is
-  // lost — stale rows simply show a room that pruned itself out.
+  // Refresh the index ONLY on real membership changes. Heartbeats are
+  // absorbed by PartyRoomDO; the index only needs discovery metadata.
   if (resp.ok && (action === "join" || action === "leave")) {
-    const room = await resp.clone().json() as Record<string, unknown>;
-    const members = room.members as unknown[];
     try {
-      if (members.length > 0) {
-        await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
-          name: room.name, members: members.length, hostId: room.hostId,
-        }), { expirationTtl: 86400 });
+      const room = await resp.clone().json() as Record<string, unknown>;
+      const members = (room.members as unknown[]).length;
+      const indexStub = env.PARTY_INDEX.get(env.PARTY_INDEX.idFromName("INDEX"));
+      if (members > 0) {
+        await indexStub.fetch(new Request("https://idx/upsert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code,
+            name: room.name,
+            hostId: room.hostId,
+            members,
+            updatedAt: Date.now(),
+          }),
+        }));
       } else {
-        await env.NETEASE_AUTH.delete(`party-idx:${code}`);
+        await indexStub.fetch(new Request(`https://idx/remove?code=${code}`));
       }
     } catch { /* index stale is acceptable */ }
   }

@@ -42,8 +42,8 @@ beforeAll(async () => {
     scriptPath: outfile.pathname.slice(new URL('..', import.meta.url).pathname.length),
     durableObjects: {
       PARTY_ROOM: { className: 'PartyRoomDO', useSQLite: true },
+      PARTY_INDEX: { className: 'PartyIndexDO', useSQLite: true },
     },
-    compatibilityDate: '2026-07-24',
   });
   const ns = await mf.getDurableObjectNamespace('PARTY_ROOM');
   const stub = ns.get(ns.idFromName('TESTROOM'));
@@ -179,4 +179,52 @@ describe('PartyRoomDO', () => {
     const chat = await fetchFresh('/chat', json({ id: 'x', text: 'hi' }));
     expect(chat.status).toBe(404);
   });
-});
+ });
+
+ describe('PartyIndexDO', () => {
+   let idxFetch: (input: string, init?: RequestInit) => Promise<Response>;
+
+   beforeAll(async () => {
+     const ns = await mf.getDurableObjectNamespace('PARTY_INDEX');
+     const stub = ns.get(ns.idFromName('INDEX'));
+     idxFetch = (input, init) => stub.fetch(new URL(input, 'https://idx').toString(), init);
+   });
+
+   it('upsert then list returns the room with correct metadata', async () => {
+     await idxFetch('/upsert', json({
+       code: 'AAA1', name: 'room a', hostId: 'h1', members: 2, updatedAt: 1,
+     }));
+     await idxFetch('/upsert', json({
+       code: 'BBB2', name: 'room b', hostId: 'h2', members: 1, updatedAt: 2,
+     }));
+     const r = await (await idxFetch('/list?actorId=h1')).json() as any;
+     expect(r.rooms).toHaveLength(2);
+     const aaa1 = r.rooms.find((x: any) => x.code === 'AAA1');
+     expect(aaa1).toMatchObject({ code: 'AAA1', name: 'room a', members: 2, host: true });
+     const bbb2 = r.rooms.find((x: any) => x.code === 'BBB2');
+     expect(bbb2).toMatchObject({ host: false });
+     // higher member count first
+     expect(r.rooms[0].code).toBe('AAA1');
+   });
+
+   it('zero-member entries are excluded from list', async () => {
+     await idxFetch('/upsert', json({
+       code: 'CCC3', name: 'empty', hostId: 'h3', members: 0, updatedAt: 3,
+     }));
+     const r = await (await idxFetch('/list')).json() as any;
+     expect(r.rooms.find((x: any) => x.code === 'CCC3')).toBeUndefined();
+   });
+
+   it('remove deletes the entry from list', async () => {
+     await idxFetch('/remove?code=BBB2');
+     const r = await (await idxFetch('/list')).json() as any;
+     expect(r.rooms.find((x: any) => x.code === 'BBB2')).toBeUndefined();
+   });
+
+   it('rejects upsert without code; rejects unknown action', async () => {
+     const noCode = await idxFetch('/upsert', json({ name: 'x' }));
+     expect(noCode.status).toBe(400);
+     const unknown = await idxFetch('/dance');
+     expect(unknown.status).toBe(400);
+   });
+ });

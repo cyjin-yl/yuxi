@@ -11,7 +11,8 @@
   ],
   "durable_objects": {
     "bindings": [
-      { "name": "PARTY_ROOM", "class_name": "PartyRoomDO", "script_name": "yvxi-party" }
+      { "name": "PARTY_ROOM", "class_name": "PartyRoomDO", "script_name": "yvxi-party" },
+      { "name": "PARTY_INDEX", "class_name": "PartyIndexDO", "script_name": "yvxi-party" }
     ]
   }
 }
