@@ -1,4 +1,11 @@
-name: Deploy party worker
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/**'
+      - 'wrangler-party.jsonc'
+      - '.github/workflows/deploy-party-worker.yml'
+  workflow_dispatch:
 
 # The listen-together Durable Object lives in its own worker (yvxi-party),
 # separate from the Pages project. Pages auto-deploys from main via the
