@@ -41,7 +41,7 @@ beforeAll(async () => {
     modules: true,
     scriptPath: outfile.pathname.slice(new URL('..', import.meta.url).pathname.length),
     durableObjects: {
-      PARTY_ROOM: { className: 'PartyRoomDO' },
+      PARTY_ROOM: { className: 'PartyRoomDO', useSQLite: true },
     },
     compatibilityDate: '2026-07-24',
   });
@@ -157,5 +157,26 @@ describe('PartyRoomDO', () => {
   it('unknown actions are rejected', async () => {
     const res = await doFetch('/SOMEOTHERROOM/dance', json({ id: 'x' }));
     expect([400, 404]).toContain(res.status);
+  });
+
+  it('heartbeat/get/chat on a fresh DO returns room_not_found, NOT a 500', async () => {
+    // Regression: ensure() used cursor.one() which throws "Expected exactly one
+    // result" when the room table is empty (new DO, or after cleanup alarm
+    // deletes the row). That bubbled up as a worker exception 1101 — the client
+    // could not distinguish "room gone" from "server broken".
+    const freshNs = await mf.getDurableObjectNamespace('PARTY_ROOM');
+    const freshStub = freshNs.get(freshNs.idFromName('NEVEREXISTED'));
+    const fetchFresh = (input: string, init?: RequestInit) =>
+      freshStub.fetch(new URL(input, 'https://do').toString(), init);
+
+    const hb = await fetchFresh('/heartbeat', json({ id: 'newcomer' }));
+    expect(hb.status).toBe(404);
+    expect(await hb.json()).toMatchObject({ error: 'room_not_found' });
+
+    const get = await fetchFresh('/get');
+    expect(get.status).toBe(404);
+
+    const chat = await fetchFresh('/chat', json({ id: 'x', text: 'hi' }));
+    expect(chat.status).toBe(404);
   });
 });

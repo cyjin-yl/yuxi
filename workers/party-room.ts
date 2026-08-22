@@ -58,7 +58,12 @@ export class PartyRoomDO implements DurableObject {
     if (this.room) return this.room;
     await this.ensureTable();
     const cursor = this.state.storage.sql.exec("SELECT data FROM room WHERE id = 1");
-    const row = cursor.one() as { data: string } | null;
+    // NOTE: SqlStorageCursor.one() THROWS when the query returns zero rows
+    // ("Expected exactly one result...") — it is not nullable. An empty room
+    // table (fresh DO, or after the cleanup alarm's DELETE) must yield null
+    // here so callers return room_not_found instead of a 500.
+    const rows = cursor.toArray() as { data: string }[];
+    const row = rows[0] ?? null;
     if (row) { this.room = JSON.parse(row.data) as PartyRoom; return this.room; }
     return null;
   }
