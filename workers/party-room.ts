@@ -44,7 +44,7 @@ export class PartyRoomDO implements DurableObject {
   private dirty = false;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private state: DurableObjectState, _env: unknown) {}
+  constructor(private state: DurableObjectState, private env: { PARTY_INDEX?: DurableObjectNamespace }) {}
 
   private tableReady = false;
 
@@ -88,18 +88,27 @@ export class PartyRoomDO implements DurableObject {
     void this.state.storage.setAlarm(Date.now() + 24 * 3600 * 1000);
   }
 
+  /** Drop the room's state if no members remain (or force=true). Returns true if removed. */
+  async deleteIfEmpty(force = false): Promise<boolean> {
+    if (!this.room) return false;
+    const now = Date.now();
+    const alive = force ? [] : this.room.members.filter((m) => now - m.lastSeen < MEMBER_TIMEOUT);
+    if (alive.length) return false;
+    const code = this.room.code;
+    this.room = null;
+    await this.ensureTable();
+    this.state.storage.sql.exec("DELETE FROM room");
+    try {
+      const ns = this.env.PARTY_INDEX;
+      if (ns) await ns.get(ns.idFromName("INDEX")).fetch(new Request(`https://idx/remove?code=${code}`));
+    } catch { /* index stale is acceptable */ }
+    return true;
+  }
+
   async alarm(): Promise<void> {
-    if (this.room) {
-      const now = Date.now();
-      const alive = this.room.members.filter((m) => now - m.lastSeen < MEMBER_TIMEOUT);
-      if (!alive.length) {
-        this.room = null;
-        await this.ensureTable();
-        this.state.storage.sql.exec("DELETE FROM room");
-      } else {
-        this.scheduleCleanup();
-      }
-    }
+    if (!this.room) return;
+    const removed = await this.deleteIfEmpty();
+    if (!removed) this.scheduleCleanup();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -110,6 +119,13 @@ export class PartyRoomDO implements DurableObject {
       const room = await this.ensure();
       if (!room) return json({ error: "room_not_found" }, 404);
       return json(prune({ ...room }));
+    }
+
+    // Test/maintenance hook: run the same cleanup the alarm would, on demand.
+    if (action === "__deleteIfEmpty") {
+      await this.ensure();
+      const force = url.searchParams.get("force") === "true";
+      return json({ removed: await this.deleteIfEmpty(force) });
     }
 
     const body: Record<string, unknown> =

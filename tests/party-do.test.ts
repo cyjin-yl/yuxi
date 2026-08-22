@@ -251,3 +251,40 @@ describe('PartyRoomDO', () => {
     expect(r.rooms.some((x) => x.code === 'NEW8' || x.code === 'AAA1')).toBe(true);
   });
  });
+
+describe('PartyRoomDO → PartyIndexDO cleanup', () => {
+  it('deleteIfEmpty on a dead room removes its row from the discovery index', async () => {
+    // Create a room (registers in the index via the Pages proxy path we
+    // simulate here by upserting directly).
+    const roomNs = await mf.getDurableObjectNamespace('PARTY_ROOM');
+    const idxNs = await mf.getDurableObjectNamespace('PARTY_INDEX');
+    const roomStub = roomNs.get(roomNs.idFromName('CLEANUPROOM'));
+    const idxStub = idxNs.get(idxNs.idFromName('INDEX'));
+
+    await roomStub.fetch('https://do/create?code=CLEANUPROOM', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'h', name: 'H', roomName: 'cleanup' }),
+    });
+    await idxStub.fetch('https://idx/upsert', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: 'CLEANUPROOM', name: 'cleanup', hostId: 'h', members: 1, updatedAt: Date.now() }),
+    });
+
+    let listed = (await (await idxStub.fetch('https://idx/list')).json() as any).rooms;
+    expect(listed.some((r: any) => r.code === 'CLEANUPROOM')).toBe(true);
+
+    // Simulate host death: lastSeen goes stale, then deleteIfEmpty fires.
+    // Drive it through the real DO method the alarm calls.
+    const res = await roomStub.fetch('https://do/__deleteIfEmpty?force=true', { method: 'POST' });
+    expect(res.status).toBe(200);
+
+    listed = (await (await idxStub.fetch('https://idx/list')).json() as any).rooms;
+    expect(listed.some((r: any) => r.code === 'CLEANUPROOM')).toBe(false);
+
+    // Room state is gone too.
+    const get = await roomStub.fetch('https://do/get');
+    expect(get.status).toBe(404);
+  });
+});

@@ -75,7 +75,7 @@ export class PartyIndexDO implements DurableObject {
       if (action === "list") {
         const actorId = url.searchParams.get("actorId") || "";
         const rows = this.state.storage.sql
-          .exec("SELECT code, name, hostId, members FROM rooms WHERE members > 0 ORDER BY members DESC")
+          .exec("SELECT code, name, hostId, members FROM rooms WHERE members > 0 ORDER BY members DESC, updatedAt DESC")
           .toArray() as { code: string; name: string; hostId: string; members: number }[];
         const rooms = rows.map((r) => ({
           code: r.code,
