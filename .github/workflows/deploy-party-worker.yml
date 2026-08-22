@@ -1,0 +1,41 @@
+name: Deploy party worker
+
+# The listen-together Durable Object lives in its own worker (yvxi-party),
+# separate from the Pages project. Pages auto-deploys from main via the
+# Cloudflare Git integration; this worker has no git integration, so it must
+# be deployed explicitly. Run this when workers/party-room.ts changes — or
+# trigger it manually from the Actions tab.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/party-room.ts'
+      - 'wrangler-party.jsonc'
+      - '.github/workflows/deploy-party-worker.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check party worker
+        run: npx tsc -p workers/tsconfig.json
+
+      - name: Dry-run bundle
+        run: npx wrangler deploy --config wrangler-party.jsonc --dry-run --outdir dist-worker
+
+      - name: Deploy
+        run: npx wrangler deploy --config wrangler-party.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
