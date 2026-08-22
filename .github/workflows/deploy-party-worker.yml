@@ -13,15 +13,6 @@ on:
 # be deployed explicitly. Run this when workers/party-room.ts changes — or
 # trigger it manually from the Actions tab.
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'workers/party-room.ts'
-      - 'wrangler-party.jsonc'
-      - '.github/workflows/deploy-party-worker.yml'
-  workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
