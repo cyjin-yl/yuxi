@@ -159,7 +159,9 @@ export async function fetchRoom(code: string): Promise<PartyRoom> {
 }
 
 export async function listRooms(): Promise<{ code: string; name: string; members: number; host: boolean }[]> {
-  const res = await fetch(BASE);
+  // Pass our id so the server can flag rooms we host (`host: true`) in the
+  // discovery list. Without it every row renders without the 房主 marker.
+  const res = await fetch(`${BASE}?id=${encodeURIComponent(partyId())}`);
   if (!res.ok) throw new Error(`party_${res.status}`);
   const body = asRecord(await res.json());
   if (!Array.isArray(body?.rooms)) return [];

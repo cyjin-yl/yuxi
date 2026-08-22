@@ -224,9 +224,15 @@ function readTrackValue(v: unknown): { id: string; title: string; artist: string
 
 /** Thin proxy: all room logic lives in the PartyRoomDO. */
 async function handleParty(env: Env, parts: string[], request: Request): Promise<Response> {
+  const url = new URL(request.url);
   const body: Record<string, unknown> =
     request.method === "POST" ? (asRecord(await request.json().catch(() => ({}))) ?? {}) : {};
-  const actorId = typeof body.id === "string" ? body.id : "";
+  // Identity arrives in the JSON body for POSTs, in the query string for the
+  // GET /list (which has no body) — both feed the same actorId used for
+  // host-flag computation in the index DO.
+  const actorId = typeof body.id === "string" && body.id
+    ? body.id
+    : url.searchParams.get("id") || "";
   // GET /netease/party — list active rooms from the PartyIndexDO singleton.
   // Reads only — never touches KV, so free-tier write quota is irrelevant.
   if (parts[2] === undefined && request.method === "GET") {
