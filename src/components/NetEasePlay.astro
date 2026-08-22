@@ -138,7 +138,7 @@ const displaySubtitle = resolvedSubtitle ?? (kind === 'playlist' ? '点击播放
           await player.init();
           if (kind === 'playlist') {
             await player.loadNeteasePlaylist(id);
-            if (player.getExpand && player.getExpand() === 'mini') player.setExpand('sheet');
+            if (player.getSnapshot().expand === 'mini') player.setExpand('sheet');
             void player.play();
           } else {
             // song — pop it onto the queue and play immediately.
