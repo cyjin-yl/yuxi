@@ -11,6 +11,7 @@ import {
   announcePause,
   announcePlay,
   createRoom,
+  heartbeat,
   enqueueTrack,
   joinRoom,
   leaveRoom,
@@ -1025,6 +1026,14 @@ class YuxiPlayer {
     const sharedTrack = toPartyTrack(track);
     this.queuePartyStateWrite(() => announcePlay(room.code, sharedTrack, at, offset, at));
   }
+  private startPartyTimer(): void {
+    if (this.partyTimer) clearInterval(this.partyTimer);
+    // Heartbeat drives presence + remote state/queue/chat convergence.
+    this.partyTimer = setInterval(() => void this.partyPoll(), 2500);
+    // Fire one immediately so join/start reflects the room without waiting.
+    void this.partyPoll();
+  }
+
   async startParty(name: string): Promise<PartyRoom> {
     const current = this.track();
     const queueIds = this.index >= 0 ? this.queue.slice(this.index + 1) : this.queue;
@@ -1106,7 +1115,11 @@ class YuxiPlayer {
       };
 
       const local = this.track();
-      const changed = !local || local.id !== target.id;
+      // "Changed" means the room's track differs from what we are actually
+      // playing — not just the queue pointer. syncPartyQueue can rewrite the
+      // local queue before the media rebind happens, so also require that the
+      // audio element is really bound to this track.
+      const changed = !local || local.id !== target.id || this.loadedTrackId !== target.id;
       if (changed && !this.partySyncing) {
         this.partySyncing = true;
         try {

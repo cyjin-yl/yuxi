@@ -2163,7 +2163,7 @@ a.tag:hover {
 
 .yp-now {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(16rem, 1.15fr);
+  grid-template-columns: minmax(16rem, 1fr) minmax(0, 1.15fr);
   gap: 0.5rem 1.25rem;
   min-height: 0;
   flex: 1;
@@ -2183,6 +2183,26 @@ a.tag:hover {
   line-height: 1.25;
 }
 .yp-now-sub { margin-top: 0.25rem; color: var(--ink-3); font-size: 0.95rem; }
+.yp-artist-links {
+  /* Artist chips must never dictate the width of the row they live in:
+     tracks like "We Are The World" credit 20+ artists. Wrap instead of
+     overflowing, clamp to a few lines, fade the tail with an ellipsis. */
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.yp-artist-sep { opacity: 0.55; padding: 0 0.15em; }
+.yp-now-sub.yp-artist-links.yp-artist-links {
+  /* NOTE: -webkit-line-clamp forces display:flow-root in current Chromium
+     builds, so we clamp by height instead: block layout wraps the chips and
+     anything past two lines is simply cropped. */
+  display: block;
+  max-height: 2.9em;
+  line-height: 1.35;
+  overflow: hidden;
+  min-width: 0;
+}
 .yp-artist-link {
   /* Clickable artist chip: inherits text color from siblings, zero chrome. */
   background: transparent;
@@ -2471,7 +2491,12 @@ button .yp-artist-link { background: transparent !important; }
 .yp-queue-artist {
   font-size: 0.72rem; color: var(--ink-3);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Chips are inline-flex; give the row an explicit floor so a 20-artist
+     credit line cannot inflate the flex item past its container. */
+  min-width: 0;
+  max-width: 100%;
 }
+.yp-search-artist.yp-artist-links { min-width: 0; }
 .yp-queue-item.is-current .yp-queue-artist { color: color-mix(in srgb, var(--ink) 62%, transparent); }
 .yp-like-btn { width: 2.5rem; height: 2.5rem; color: var(--ink); }
 .yp-like-btn.is-liked { color: #e2556e; }
@@ -2594,7 +2619,7 @@ button .yp-artist-link { background: transparent !important; }
 .yp-mobile .yp-now-main {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 4.5rem 1fr;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
   grid-template-areas:
     "art meta"
     "progress progress"

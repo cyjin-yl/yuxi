@@ -273,8 +273,14 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
     headers: { "Content-Type": "application/json" },
     body: request.method === "POST" ? JSON.stringify(body) : undefined,
   }));
-  // Update KV index on membership changes
-  if (resp.ok && (action === "join" || action === "leave" || action === "heartbeat")) {
+  // Update KV index ONLY on real membership changes. Heartbeats arrive every
+  // 2.5s per member; writing the index each time burned through the daily KV
+  // write quota (1k/day free tier) in under an hour with two open tabs.
+  // Presence freshness is DO-owned (lastSeen + MEMBER_TIMEOUT pruning); the
+  // index only needs room discovery metadata, which changes on join/leave/
+  // create. The 24h TTL on the index entry bounds staleness if a leave is
+  // lost — stale rows simply show a room that pruned itself out.
+  if (resp.ok && (action === "join" || action === "leave")) {
     const room = await resp.clone().json() as Record<string, unknown>;
     const members = room.members as unknown[];
     if (members.length > 0) {
