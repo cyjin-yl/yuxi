@@ -1089,8 +1089,13 @@ class YuxiPlayer {
     this.partyPollPending = true;
     try {
       await this.applyPartyRoom(await heartbeat(room.code));
-    } catch {
-      /* transient network error — retry on the next tick */
+    } catch (err) {
+      // Room gone (alarm cleanup, host deleted it) — leave cleanly so the UI
+      // resets instead of polling a 404 forever. Transient network errors
+      // just retry on the next tick.
+      if (err instanceof Error && err.message === 'party_404') {
+        void this.leaveParty();
+      }
     } finally {
       this.partyPollPending = false;
     }
