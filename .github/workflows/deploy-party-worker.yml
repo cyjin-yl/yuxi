@@ -18,6 +18,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # 'true' only when the repo secret exists — gates the deploy step.
+      CLOUDFLARE_API_TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +41,14 @@ jobs:
       - name: Dry-run bundle
         run: npx wrangler deploy --config wrangler-party.jsonc --dry-run --outdir dist-worker
 
+      # Skips cleanly until the CLOUDFLARE_API_TOKEN repo secret is set, so
+      # the first push isn't a red X. Add the secret to go live.
       - name: Deploy
+        if: ${{ env.CLOUDFLARE_API_TOKEN_SET == 'true' }}
         run: npx wrangler deploy --config wrangler-party.jsonc
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy skipped (secret missing)
+        if: ${{ env.CLOUDFLARE_API_TOKEN_SET != 'true' }}
+        run: echo "CLOUDFLARE_API_TOKEN secret not set — add it in repo Settings → Secrets → Actions to enable deploys."
