@@ -32,6 +32,9 @@ jobs:
       - name: Type-check party worker
         run: npx tsc -p workers/tsconfig.json
 
+      - name: Run DO integration tests
+        run: npm test
+
       - name: Dry-run bundle
         run: npx wrangler deploy --config wrangler-party.jsonc --dry-run --outdir dist-worker
 

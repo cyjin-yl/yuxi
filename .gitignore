@@ -3,3 +3,6 @@ dist/
 .astro/
 .env
 .wrangler/
+
+# vitest/miniflare test artifacts
+tests/party-do-bundle.mjs

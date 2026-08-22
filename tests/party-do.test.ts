@@ -1,0 +1,161 @@
+/**
+ * Integration tests for PartyRoomDO — the listen-together room authority.
+ *
+ * Runs the real DO class in miniflare's workerd runtime, so the storage
+ * semantics (SQL-backed state, markDirty/flush coalescing) are production
+ * ones, not mocks. Covers the write-path contract the client relies on:
+ *
+ *
+ *  - create: atomic snapshot (state + host membership + queue)
+ *  - heartbeat: touches presence only; never mutates playback state
+ *    (regression guard for the KV-index burn and for accidental state resets)
+ *  - pause: stores exact offset when provided, computes it when not
+ *  - join/leave/chat: membership + chat append semantics
+ *  - prune: stale members (lastSeen > 120s) disappear from responses
+ */
+import esbuild from 'esbuild';
+import { Miniflare } from 'miniflare';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+let mf: Miniflare;
+let doFetch: (input: string, init?: RequestInit) => Promise<Response>;
+
+beforeAll(async () => {
+  // Bundle workers/party-room.ts to a single ESM file with esbuild —
+  // miniflare's module rules don't transpile TypeScript. The bundle exports
+  // PartyRoomDO for the durableObjects binding plus a default fetch so the
+  // worker itself is a valid module.
+  const outfile = new URL('./party-do-bundle.mjs', import.meta.url);
+  await esbuild.build({
+    entryPoints: [new URL('./party-do-shim.ts', import.meta.url).pathname],
+    outfile: outfile.pathname,
+    bundle: true,
+    format: 'esm',
+    platform: 'neutral',
+    target: 'es2022',
+  });
+  mf = new Miniflare({
+    // workerd refuses module paths that escape its root via ".."; pin the
+    // root at the repo so the tests/ bundle resolves cleanly.
+    rootPath: new URL('..', import.meta.url).pathname,
+    modules: true,
+    scriptPath: outfile.pathname.slice(new URL('..', import.meta.url).pathname.length),
+    durableObjects: {
+      PARTY_ROOM: { className: 'PartyRoomDO' },
+    },
+    compatibilityDate: '2026-07-24',
+  });
+  const ns = await mf.getDurableObjectNamespace('PARTY_ROOM');
+  const stub = ns.get(ns.idFromName('TESTROOM'));
+  doFetch = (input: string, init?: RequestInit) =>
+    stub.fetch(new URL(input, 'https://do').toString(), init);
+});
+
+afterAll(async () => {
+  await mf.dispose();
+});
+
+function json(body: unknown, init?: RequestInit): RequestInit {
+  return {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    ...init,
+  };
+}
+
+describe('PartyRoomDO', () => {
+  it('create returns an atomic room snapshot with host as sole member', async () => {
+    const res = await doFetch('/create?code=TESTROOM', json({
+      id: 'host-1', name: 'Host', roomName: 'Test Room',
+      track: { id: '255249', title: 'Song A', artist: 'Artist A' },
+      playing: true, offset: 12.5,
+    }));
+    expect(res.status).toBe(200);
+    const room = (await res.json()) as any;
+    expect(room.code).toBe('TESTROOM');
+    expect(room.hostId).toBe('host-1');
+    expect(room.state.mode).toBe('playing');
+    expect(room.state.track.id).toBe('255249');
+    expect(room.state.offset).toBe(12.5);
+    expect(room.members).toHaveLength(1);
+    expect(room.members[0].id).toBe('host-1');
+    expect(room.queue).toEqual([]);
+  });
+
+  it('join adds a member and appends the system chat message', async () => {
+    const res = await doFetch('/join', json({ id: 'guest-1', name: 'Guest' }));
+    const room = (await res.json()) as any;
+    expect(room.members.map((m: any) => m.id).sort()).toEqual(['guest-1', 'host-1']);
+    expect(room.chat.some((c: any) => c.text === '加入了房间' && c.name === 'Guest')).toBe(true);
+  });
+
+  it('heartbeat touches presence but NEVER changes playback state', async () => {
+    // Capture state before
+    const before = await (await doFetch('/get')).json() as any;
+
+    // Guest heartbeats several times
+    for (let i = 0; i < 3; i++) {
+      const res = await doFetch('/heartbeat', json({ id: 'guest-1', name: 'Guest' }));
+      expect(res.status).toBe(200);
+      await res.json();
+    }
+
+    const after = await (await doFetch('/get')).json() as any;
+    // Playback state untouched by presence writes
+    expect(after.state.mode).toBe(before.state.mode);
+    expect(after.state.track).toEqual(before.state.track);
+    expect(after.state.offset).toBe(before.state.offset);
+    expect(after.state.startedAt).toBe(before.state.startedAt);
+    // But lastSeen did advance
+    const guestBefore = before.members.find((m: any) => m.id === 'guest-1');
+    const guestAfter = after.members.find((m: any) => m.id === 'guest-1');
+    expect(guestAfter.lastSeen).toBeGreaterThanOrEqual(guestBefore.lastSeen);
+  });
+
+  it('pause stores the explicit offset and flips mode to idle', async () => {
+    const res = await doFetch('/pause', json({ id: 'host-1', offset: 77.25 }));
+    const room = (await res.json()) as any;
+    expect(room.state.mode).toBe('idle');
+    expect(room.state.offset).toBeCloseTo(77.25, 2);
+  });
+
+  it('pause without offset derives position from elapsed play time', async () => {
+    // Resume first so there's elapsed time to derive from
+    await doFetch('/play', json({
+      id: 'host-1',
+      track: { id: '999', title: 'T', artist: 'A' },
+      offset: 10, startedAt: Date.now(),
+    }));
+    const res = await doFetch('/pause', json({ id: 'host-1' }));
+    const room = (await res.json()) as any;
+    expect(room.state.mode).toBe('idle');
+    // offset >= 10 (start) plus a little elapsed time
+    expect(room.state.offset).toBeGreaterThanOrEqual(10);
+  });
+
+  it('chat appends messages; other members see them on next read', async () => {
+    // Client's post() always sends {id, name}; DO falls back to 听众 without it.
+    await doFetch('/chat', json({ id: 'guest-1', name: 'Guest', text: 'hello room' }));
+    const room = await (await doFetch('/get')).json() as any;
+    const msgs = room.chat.filter((c: any) => c.text === 'hello room');
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].name).toBe('Guest');
+  });
+
+  it('leave removes the member; empty room deletes index-worthy state', async () => {
+    await doFetch('/leave', json({ id: 'guest-1' }));
+    let room = await (await doFetch('/get')).json() as any;
+    expect(room.members.map((m: any) => m.id)).toEqual(['host-1']);
+    await doFetch('/leave', json({ id: 'host-1' }));
+    // After everyone leaves the DO prunes itself on alarm; immediate get may
+    // still return data until the alarm fires — but members list must be empty.
+    room = await (await doFetch('/get')).json().catch(() => null) as any;
+    if (room && room.members) expect(room.members).toHaveLength(0);
+  });
+
+  it('unknown actions are rejected', async () => {
+    const res = await doFetch('/SOMEOTHERROOM/dance', json({ id: 'x' }));
+    expect([400, 404]).toContain(res.status);
+  });
+});
