@@ -256,6 +256,7 @@ export class PartyRoomDO implements DurableObject {
       this.syncIndex(room.members.length);
       return json(prune(room));
     }
+
     if (action === "play") {
       const track = readTrack(body);
       if (!track) return json({ error: "missing_track" }, 400);
