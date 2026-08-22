@@ -88,6 +88,46 @@ export class PartyRoomDO implements DurableObject {
     void this.state.storage.setAlarm(Date.now() + 24 * 3600 * 1000);
   }
 
+  /**
+   * Reconcile the discovery index with the room's current visible state.
+   *
+   * The index row is only refreshed on join/leave by design (see the proxy
+   * comment near handleParty). A guest who closes the tab without sending
+   * /leave therefore leaves their stale seat in the index for up to
+   * ROW_TTL_MS (6h) — while /get already prunes them after MEMBER_TIMEOUT
+   * (120s). Discovery then misleads: "1 人" but the room is actually empty.
+   *
+   * This helper closes that drift lazily: when a fetch handler sees a
+   * different *pruned* member count than what the room last advertised to
+   * the index, fire-and-forget an upsert (or a remove at 0). One DO→DO call
+   * per actual change, never per heartbeat.
+   */
+  private lastIndexedCount: number | null = null;
+  private syncIndex(prunedCount: number): void {
+    if (!this.room) return;
+    if (this.lastIndexedCount === prunedCount) return;
+    const code = this.room.code;
+    const name = this.room.name;
+    const hostId = this.room.hostId;
+    const ns = this.env.PARTY_INDEX;
+    if (!ns) return;
+    this.lastIndexedCount = prunedCount;
+    void (async () => {
+      try {
+        const idx = ns.get(ns.idFromName("INDEX"));
+        if (prunedCount > 0) {
+          await idx.fetch(new Request("https://idx/upsert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code, name, hostId, members: prunedCount, updatedAt: Date.now() }),
+          }));
+        } else {
+          await idx.fetch(new Request(`https://idx/remove?code=${encodeURIComponent(code)}`, { method: "POST" }));
+        }
+      } catch { /* drift bounded by TTL; safe to ignore */ }
+    })();
+  }
+
   /** Drop the room's state if no members remain (or force=true). Returns true if removed. */
   async deleteIfEmpty(force = false): Promise<boolean> {
     if (!this.room) return false;
@@ -118,7 +158,11 @@ export class PartyRoomDO implements DurableObject {
     if (action === "get") {
       const room = await this.ensure();
       if (!room) return json({ error: "room_not_found" }, 404);
-      return json(prune({ ...room }));
+      const pruned = prune({ ...room });
+      // Read path doubles as the drift detector: a poll arriving after the
+      // 120s member timeout is the first signal that someone vanished.
+      this.syncIndex(pruned.members.length);
+      return json(pruned);
     }
 
     // Test/maintenance hook: run the same cleanup the alarm would, on demand.
@@ -186,6 +230,7 @@ export class PartyRoomDO implements DurableObject {
       room.chat.push(message);
       room.updatedAt = now;
       this.markDirty();
+      this.syncIndex(room.members.length);
       return json(prune(room));
     }
 
@@ -197,6 +242,10 @@ export class PartyRoomDO implements DurableObject {
         // Room empty: schedule immediate cleanup
         void this.state.storage.setAlarm(now + 60_000);
       }
+      // Leave is authoritative (explicit goodbye, not a timeout prune) —
+      // reset the cache so the sync below always fires.
+      this.lastIndexedCount = null;
+      this.syncIndex(room.members.length);
       return json(prune(room));
     }
 
@@ -204,9 +253,9 @@ export class PartyRoomDO implements DurableObject {
       touch();
       room.updatedAt = now;
       this.markDirty();
+      this.syncIndex(room.members.length);
       return json(prune(room));
     }
-
     if (action === "play") {
       const track = readTrack(body);
       if (!track) return json({ error: "missing_track" }, 400);

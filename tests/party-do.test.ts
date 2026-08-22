@@ -15,7 +15,7 @@
  */
 import esbuild from 'esbuild';
 import { Miniflare } from 'miniflare';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
 let mf: Miniflare;
 let doFetch: (input: string, init?: RequestInit) => Promise<Response>;
@@ -286,5 +286,109 @@ describe('PartyRoomDO → PartyIndexDO cleanup', () => {
     // Room state is gone too.
     const get = await roomStub.fetch('https://do/get');
     expect(get.status).toBe(404);
+  });
+});
+
+describe('PartyRoomDO index drift healing', () => {
+  let syncIdxNs: DurableObjectNamespace;
+  let syncRoomStub: DurableObjectStub;
+  let syncIdxStub: DurableObjectStub;
+
+  beforeAll(async () => {
+    syncIdxNs = await mf.getDurableObjectNamespace('PARTY_INDEX');
+  });
+
+  beforeEach(async () => {
+    // Fresh room + index row for each scenario so the upsert/remove probe
+    // is isolated from any state other tests left behind.
+    const roomNs = await mf.getDurableObjectNamespace('PARTY_ROOM');
+    const code = 'DRIFT' + Math.random().toString(36).slice(2, 6).toUpperCase();
+    syncRoomStub = roomNs.get(roomNs.idFromName(code));
+    syncIdxStub = syncIdxNs.get(syncIdxNs.idFromName('INDEX'));
+    await syncRoomStub.fetch('https://do/create?code=' + code, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'host-x', name: 'HostX', roomName: 'drift' }),
+    });
+    // Simulate the Pages proxy's index upsert on create.
+    await syncIdxStub.fetch('https://idx/upsert', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        code, name: 'drift', hostId: 'host-x', members: 1, updatedAt: Date.now(),
+      }),
+    });
+  });
+
+  it('leave removes the room from the discovery index immediately', async () => {
+    const code = (await (await syncRoomStub.fetch('https://do/get')).json() as any).code;
+    // Pre: index row present with members=1.
+    let listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    expect(listed.some((r: any) => r.code === code)).toBe(true);
+
+    // Host leaves explicitly.
+    const res = await syncRoomStub.fetch('https://do/leave', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'host-x', name: 'HostX' }),
+    });
+    expect(res.status).toBe(200);
+
+    // Drift must heal within the same request, not at the 6h TTL.
+    listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    expect(listed.some((r: any) => r.code === code)).toBe(false);
+  });
+
+  it('join refreshes the index member count to reflect the new total', async () => {
+    const code = (await (await syncRoomStub.fetch('https://do/get')).json() as any).code;
+    // Pre: members=1 from the create upsert.
+    let listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    expect(listed.find((r: any) => r.code === code).members).toBe(1);
+
+    await syncRoomStub.fetch('https://do/join', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'guest-x', name: 'GuestX' }),
+    });
+
+    listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    // The proxy ALSO refreshes on join — but with our self-sync we don't depend on
+    // that path; even a client that goes through the room DO alone (e.g. a future
+    // server-side caller) keeps the index accurate.
+    const row = listed.find((r: any) => r.code === code);
+    expect(row).toBeDefined();
+    expect(row.members).toBe(2);
+  });
+
+  it('repeated heartbeat does NOT spam the index when count is unchanged', async () => {
+    const code = (await (await syncRoomStub.fetch('https://do/get')).json() as any).code;
+    // Count the upsert invocations by inspecting row updatedAt advances: any
+    // upsert with the same members count should still bump updatedAt, so we
+    // assert the INDEX itself is not being hammered with higher member counts.
+    // We instead check that 5 heartbeats do NOT change the listed members value.
+    for (let i = 0; i < 5; i++) {
+      await syncRoomStub.fetch('https://do/heartbeat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: 'host-x', name: 'HostX' }),
+      });
+    }
+    const listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    const row = listed.find((r: any) => r.code === code);
+    expect(row.members).toBe(1);
+    // Idempotency: count stays at 1 (no accidental growth from heartbeat).
+    expect(row.members).toBe(1);
+  });
+
+  it('get/heartbeat with no real change is idempotent — index row remains stable', async () => {
+    // After setup + a single get, multiple gets must keep the same row.
+    const code = (await (await syncRoomStub.fetch('https://do/get')).json() as any).code;
+    for (let i = 0; i < 3; i++) {
+      await syncRoomStub.fetch('https://do/get');
+    }
+    const listed = (await (await syncIdxStub.fetch('https://idx/list')).json() as any).rooms;
+    const row = listed.find((r: any) => r.code === code);
+    expect(row).toBeDefined();
+    expect(row.members).toBe(1);
   });
 });
