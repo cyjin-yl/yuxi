@@ -15,6 +15,13 @@ export interface RoomIndexEntry {
   updatedAt: number;
 }
 
+/** Discovery rows expire: a room whose membership hasn't changed for 6h is
+ *  either dead (browser closed without leave) or inactive. Either way it
+ *  shouldn't advertise itself forever. The room DO keeps its own state; this
+ *  TTL only affects the /list discovery surface. */
+const ROW_TTL_MS = 6 * 3600 * 1000;
+const SWEEP_INTERVAL_MS = 3600 * 1000;
+
 export class PartyIndexDO implements DurableObject {
   private tableReady = false;
 
@@ -52,6 +59,9 @@ export class PartyIndexDO implements DurableObject {
           "INSERT OR REPLACE INTO rooms (code, name, hostId, members, updatedAt) VALUES (?, ?, ?, ?, ?)",
           code, name, hostId, members, updatedAt
         );
+        // Keep exactly one alarm scheduled for the next sweep.
+        const current = await this.state.storage.getAlarm();
+        if (current === null) void this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
         return json({ ok: true });
       }
 
@@ -76,12 +86,31 @@ export class PartyIndexDO implements DurableObject {
         return json({ rooms });
       }
 
+      if (action === "sweep") {
+        // Maintenance endpoint: run the same prune alarm() runs. Lets ops
+        // (and tests) force a sweep without waiting an hour.
+        await this.alarm();
+        const remaining = this.state.storage.sql
+          .exec("SELECT COUNT(*) AS n FROM rooms")
+          .toArray() as { n: number }[];
+        return json({ ok: true, remaining: remaining[0]?.n ?? 0 });
+      }
+
       return json({ error: "unknown_action" }, 400);
     } catch (err) {
       // Surface the actual exception so a SQL/parse error doesn't masquerade
       // as an opaque 1101 to the Pages function caller.
       return json({ error: "index_error", message: err instanceof Error ? err.message : String(err) }, 500);
     }
+  }
+
+  /** Hourly sweep: drop rows untouched past ROW_TTL_MS. */
+  async alarm(): Promise<void> {
+    this.ensureTable();
+    this.state.storage.sql.exec("DELETE FROM rooms WHERE updatedAt < ?", Date.now() - ROW_TTL_MS);
+    // Re-arm only if rows remain — an empty registry needs no further sweeps.
+    const remaining = this.state.storage.sql.exec("SELECT COUNT(*) AS n FROM rooms").toArray() as { n: number }[];
+    if ((remaining[0]?.n ?? 0) > 0) void this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
   }
 }
 

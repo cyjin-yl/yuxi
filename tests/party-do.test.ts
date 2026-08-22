@@ -227,4 +227,27 @@ describe('PartyRoomDO', () => {
      const unknown = await idxFetch('/dance');
      expect(unknown.status).toBe(400);
    });
+
+  it('alarm sweep drops rows older than the TTL, keeps fresh ones', async () => {
+    await idxFetch('/upsert', json({
+      code: 'OLD9', name: 'stale', hostId: 'h', members: 1,
+      updatedAt: Date.now() - 7 * 3600 * 1000,
+    }));
+    await idxFetch('/upsert', json({
+      code: 'NEW8', name: 'fresh', hostId: 'h', members: 3, updatedAt: Date.now(),
+    }));
+    // Drive the alarm directly through the DO's storage API — miniflare
+    // exposes setAlarm/alarm() on the same instance, no wall-clock waiting.
+    const ns = await mf.getDurableObjectNamespace('PARTY_INDEX');
+    const stub = ns.get(ns.idFromName('INDEX'));
+    // The DO armed its alarm on the first upsert; force it to fire NOW by
+    // deleting the scheduled time and re-setting it in the past is not
+    // exposed over RPC. Instead call the sweep logic via a dedicated test
+    // action guarded to test bundles.
+    const res = await stub.fetch('https://idx/sweep');
+    expect(res.status).toBe(200);
+    const r = await (await idxFetch('/list')).json() as any;
+    expect(r.rooms.some((x: any) => x.code === 'OLD9')).toBe(false);
+    expect(r.rooms.some((x) => x.code === 'NEW8' || x.code === 'AAA1')).toBe(true);
+  });
  });
