@@ -256,10 +256,13 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
     }));
     if (!resp.ok) return resp;
     const room = await resp.json() as Record<string, unknown>;
-    // Write KV index for discovery
-    await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
-      name: room.name, members: (room.members as unknown[]).length, hostId: room.hostId,
-    }), { expirationTtl: 86400 });
+    // Discovery index only — a failed write (e.g. free-tier daily quota)
+    // must not fail the room operation itself; the DO holds the real state.
+    try {
+      await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
+        name: room.name, members: (room.members as unknown[]).length, hostId: room.hostId,
+      }), { expirationTtl: 86400 });
+    } catch { /* index stale is acceptable */ }
     return json(room);
   }
 
@@ -283,13 +286,15 @@ async function handleParty(env: Env, parts: string[], request: Request): Promise
   if (resp.ok && (action === "join" || action === "leave")) {
     const room = await resp.clone().json() as Record<string, unknown>;
     const members = room.members as unknown[];
-    if (members.length > 0) {
-      await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
-        name: room.name, members: members.length, hostId: room.hostId,
-      }), { expirationTtl: 86400 });
-    } else {
-      await env.NETEASE_AUTH.delete(`party-idx:${code}`);
-    }
+    try {
+      if (members.length > 0) {
+        await env.NETEASE_AUTH.put(`party-idx:${code}`, JSON.stringify({
+          name: room.name, members: members.length, hostId: room.hostId,
+        }), { expirationTtl: 86400 });
+      } else {
+        await env.NETEASE_AUTH.delete(`party-idx:${code}`);
+      }
+    } catch { /* index stale is acceptable */ }
   }
   return resp;
 }
