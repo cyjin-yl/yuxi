@@ -6,3 +6,5 @@ dist/
 
 # vitest/miniflare test artifacts
 tests/party-do-bundle.mjs
+
+# trigger CF Pages redeploy 2026-10-03
