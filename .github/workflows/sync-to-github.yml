@@ -1,0 +1,16 @@
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync-to-github:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitHub
+        run: |
+          git remote add github https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/cyjin-yl/yuxi.git
+          git push github main --force
