@@ -8,7 +8,7 @@ export const collections = {
     schema: z.object({
       title: z.string(),
       description: z.string().optional(),
-      date: z.date(),
+      date: z.coerce.date(),
       tags: z.array(z.string()).optional(),
       draft: z.boolean().optional(),
       luogu_url: z.string().optional(),
