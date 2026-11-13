@@ -1,0 +1,31 @@
+---
+title: 输入法装好了却"不工作"：半截配置目录与 systemd-resolved 黑名单
+description: 11 月 4 号按官方手册从 COPR 装水杉输入法 msime 0.15.0，dnf 解析不到 copr.fedorainfracloud.org，装完后引擎也没进候选列表。两个根因分别在上游 DNS 黑名单和首次配置被超时截断。
+date: 2026-11-04
+tags: [fedora, copr, systemd-resolved, ibus, dns, fedora-44]
+draft: false
+summary: 校园网上游 DNS 抖动，systemd-resolved 把坏上游拉进黑名单后一直不恢复，dnf 全程 "Could not resolve hostname"。重启 systemd-resolved 清掉黑名单后 COPR 安装一次通过。另一头 msime 首启配置被超时截断，缺 runtime-options.json，引擎加载器读状态直接退出去弹首启向导，看起来像"输入法没注册"。
+---
+
+import NetEasePlay from '../../components/NetEasePlay.astro';
+
+## 事件
+
+2026 年 11 月 4 号，按 msime.app 手册给 Fedora 44 装水杉输入法：`dnf copr enable msime/msime` 加 `dnf install msime`。第一步就卡住，COPR 仓库的 repodata 反复报 `Curl error (6): Could not resolve hostname`。装完后引擎也没出现在 IBus 候选里。
+
+## 坑
+
+网络侧：校园网上游 DNS 在抖，systemd-resolved 把超时/错误的上游拉进黑名单后没有自动恢复。nslookup 走 10.20.0.1 超时、走 DoH 也超时，但包管理器之前的失败把黑名单坐实了。不重启 resolved，后面所有域名解析都是死的。
+
+配置侧：第一轮跑 `msime-linux-setup --download` 时被超时截断，词库只拷了一半就死了，`~/.config/msime-client` 里没有 `runtime-options.json`。IBus 引擎加载器读到这个半截状态，直接退出去弹首启向导——症状是"输入法没注册"，实际是配置不完整，跟包本身无关。
+
+## 修复
+
+先 `sudo systemctl restart systemd-resolved` 清掉上游黑名单，然后 `dnf copr enable` 加安装一次通过：GPG 密钥导入正常，203MiB 主包加 69.8MiB 依赖全部落地。再把坏的 `~/.config/msime-client` 移到备份目录，重跑 `msime-linux-setup --download`，配置、词库、匿名账号一次到位，引擎自动注册进 IBus。
+
+## 经验
+
+Fedora 上包管理器突然解析不到主机名，先重启 systemd-resolved 再怀疑仓库或线路。输入法、守护进程这类"加载即退出"的组件，看不到注册多半是状态目录半截，不是包没装好；找到状态目录里缺的那个关键文件比重装包有效得多。
+
+🎵 Listening companion
+<NetEasePlay id="865964850" kind="song" />

@@ -1,0 +1,29 @@
+---
+title: 把 ACT 实验室网线交给路由器当 WAN：死在对端 .254，不是你的线
+description: 11 月 2 号把 doesvm 的 ACT 物理网口从宿主移交给 doesrouter 当独立 WAN。vmbr3 桥接、/32 主机路由、按健康检查调 metric。排查中发现网关 192.168.5.254 的 ARP 永远是 INCOMPLETE，最后判定问题死在对端交换机，不是自己的线、桥或路由。
+date: 2026-11-02
+tags: [openwrt, networking, vmbr3, arp, policy-routing, fedora, pve]
+draft: false
+summary: ACT 有线接入 doesrouter 当独立 WAN：vmbr3 只桥 nic0 和 router 的 eth2，不接 vmbr1/vmbr2。192.168.5.239/32 从宿主移到 router eth2。排查发现网关 .254 的 ARP 一直是 INCOMPLETE，但 nic0 Link up、载波在、RX 还在增长——线插着一个活交换机，只是 .254 不回应。判定死在对端（断电/换网段/端口策略），ACT 只当内网通道（Crater 等），公网保持 Wi-Fi 优先。
+---
+
+import NetEasePlay from '../../components/NetEasePlay.astro';
+
+## 事件
+
+2026 年 11 月 2 号，把 doesvm 的 ACT 物理网口交给 doesrouter（VM103，OpenWrt）作为独立 WAN。目标是 ACT 内网站点经有线直达，公网保持 ezra Wi-Fi 优先，海外流量继续走 PassWall2 分流。
+
+## 坑
+
+排查中最大的误导是以为网线或桥有问题。实测：doesvm nic0 Link up、1G full、载波在，RX 计数还在增长（5 秒 +16 包），说明网线插着一个活交换机，ACT 侧有流量进来。但网关 192.168.5.254 的 ARP 始终是 INCOMPLETE，ICMP 全丢。线是好的、桥是通的、路由也对了——问题在 ACT 实验室那头，.254 的设备断电了或换了网段或端口策略。另外 `192.168.5.239/32` 这个主机地址原来挂在宿主上，必须移到 router 的 eth2，否则会出现宿主和 router 抢同一地址的三层回环。
+
+## 修复
+
+vmbr3 只桥接 nic0 和 VM103 的 net2，不接入 vmbr1/vmbr2，避免 ACT 流量串进内网主力网段。`192.168.5.239/32` 从宿主移到 doesrouter eth2。ACT WAN 加入既有 wan 防火墙区，保留 masquerade 和 WAN 入站拒绝。路由上，`192.168.5.0/24` 和 `219.224.171.1/32` 走 eth2 直达，公网默认仍走校园无线 metric 10，ACT 健康时才用 metric 4。ACT 公网出口自 11-02 起判定不稳定（SYN 无回应），net-watchdog 两轮探测不过就不加 metric 4 路由——即使 .254 恢复，ACT 也只当内网通道，公网继续走 Wi-Fi。
+
+## 经验
+
+排查物理链路时，Link up + RX 增长 + 网关 ARP INCOMPLETE 的组合意味着线和对端交换机都活着，只是网关设备本身不回应。不要在这条路上反复改桥、改路由、改防火墙。`/32` 主机地址必须从宿主移到 router，否则会产生三层回环。物理链路问题排查到这一层就该停了，剩下的是对端的维护问题。
+
+🎵 Listening companion
+<NetEasePlay id="1857979755" kind="song" />
