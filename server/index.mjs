@@ -17,6 +17,20 @@ const SECURITY_HEADERS = {
   'cross-origin-resource-policy': 'same-origin',
   'x-robots-tag': 'noindex',
 };
+const MUSIC_HTTP_ERRORS = new Set([
+  'origin_not_allowed', 'method_not_allowed', 'rate_limited', 'body_too_large', 'json_required',
+  'invalid_json', 'json_object_required', 'invalid_query', 'invalid_pagination',
+  'netease_visitor_unavailable', 'netease_resource_unavailable', 'netease_upstream_failure',
+  'netease_invalid_response', 'netease_response_too_large', 'invalid_media_origin',
+  'invalid_range', 'media_redirect_failed', 'media_upstream_failure', 'unexpected_media_encoding',
+  'upstream_timeout', 'service_unavailable',
+]);
+
+function musicRoute(path) {
+  if (path === '/netease/search') return 'search';
+  const matched = /^\/netease\/(playlist|song|lyrics|comments|audio)\/[1-9][0-9]{0,19}$/.exec(path);
+  return matched?.[1] ?? null;
+}
 
 function tokenFrom(headers) {
   return (headers.get('cookie') ?? '').split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1) ?? '';
@@ -82,6 +96,7 @@ export function createBackend(options = {}) {
     rateLimit: options.rateLimit !== false,
     now: options.now ?? Date.now,
     fetchImpl: options.fetchImpl ?? fetch,
+    onMusicHttpEvent: options.onMusicHttpEvent ?? ((detail) => process.stderr.write(`${JSON.stringify(detail)}\n`)),
   };
   const origin = new URL(config.publicOrigin).origin;
   if (!['http:', 'https:'].includes(new URL(origin).protocol)) throw new Error('invalid_public_origin');
@@ -92,6 +107,7 @@ export function createBackend(options = {}) {
   const sweep = setInterval(() => { try { store.sweep(); } catch { process.stderr.write('yuxi: database maintenance failed\n'); } }, 60_000);
   sweep.unref();
   let closed = false;
+  let firstMusicResponse = true;
   const server = createServer({ maxHeaderSize: 16384, requestTimeout: 20_000, headersTimeout: 10_000, keepAliveTimeout: 5000 }, async (req, res) => {
     const abort = new AbortController();
     const disconnected = () => { if (!res.writableEnded) abort.abort(); };
@@ -99,9 +115,12 @@ export function createBackend(options = {}) {
     res.once('close', disconnected);
     let issuedToken;
     let result;
+    let route;
+    let localErrorCode;
     try {
       if (!req.url || req.url.length > 4096) throw new HttpError(414, 'uri_too_long');
       const url = new URL(req.url, origin);
+      route = musicRoute(url.pathname);
       const method = req.method ?? 'GET';
       const headers = requestHeaders(req);
       const source = headers.get('origin');
@@ -142,9 +161,22 @@ export function createBackend(options = {}) {
       } else throw new HttpError(404, 'not_found');
     } catch (error) {
       const status = error instanceof HttpError ? error.status : error?.name === 'TimeoutError' ? 504 : 502;
+      const code = error instanceof HttpError ? error.message : status === 504 ? 'upstream_timeout' : 'service_unavailable';
+      localErrorCode = MUSIC_HTTP_ERRORS.has(code) ? code : 'request_failed';
       result = json({ error: error instanceof HttpError ? error.message : status === 504 ? 'upstream_timeout' : 'service_unavailable', ...(error instanceof HttpError ? error.details : {}) }, status);
       if (status === 429) result.headers.set('retry-after', '60');
       if (status === 413) result.headers.set('connection', 'close');
+    }
+    if (route && (firstMusicResponse || result.status >= 400)) {
+      const first = firstMusicResponse;
+      firstMusicResponse = false;
+      const detail = {
+        event: result.status >= 400 ? 'netease_http_error' : 'netease_first_response',
+        method: ['GET', 'HEAD', 'POST'].includes(req.method) ? req.method : 'OTHER',
+        route, status: result.status, first,
+        ...(result.status >= 400 ? { errorCode: localErrorCode ?? (route === 'audio' && result.status === 451 ? 'audio_unavailable' : 'request_failed') } : {}),
+      };
+      try { config.onMusicHttpEvent(detail); } catch { /* Response delivery proceeds when a log sink is closed. */ }
     }
     if (issuedToken) result.headers.append('set-cookie', `${COOKIE}=${issuedToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${secure ? '; Secure' : ''}`);
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) result.headers.set(key, value);

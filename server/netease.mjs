@@ -15,8 +15,50 @@ const XEAPI_SIGNING_KEY = 'mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIh
 const XEAPI_RESPONSE_KEY = Buffer.from('e82ckenh8dichen8');
 const X25519_PREFIX = Buffer.from('302a300506032b656e032100', 'hex');
 const SECRET_FIELDS = /^(?:cookie|cookies|token|access_?token|refresh_?token|MUSIC_[AU]|__csrf|password)$/i;
+const VISITOR_ERROR_CODES = new Set([
+  'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'EACCES', 'EPERM',
+  'EHOSTUNREACH', 'ENETUNREACH', 'EAFNOSUPPORT', 'EPROTONOSUPPORT', 'ESOCKTNOSUPPORT', 'ENOENT',
+  'ERR_OSSL_EVP_UNSUPPORTED', 'ERR_OSSL_BAD_DECRYPT', 'ERR_OSSL_WRONG_FINAL_BLOCK_LENGTH',
+  'ERR_CRYPTO_INVALID_KEYLEN', 'ERR_CRYPTO_ECDH_INVALID_PUBLIC_KEY', 'ERR_BUFFER_TOO_LARGE',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT', 'UND_ERR_SOCKET',
+  'ERR_TLS_CERT_ALTNAME_INVALID', 'ERR_TLS_HANDSHAKE_TIMEOUT', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_HAS_EXPIRED',
+]);
+const VISITOR_STAGES = new Set(['public_key', 'registration', 'visitor_cookie']);
+const VISITOR_PHASES = new Set(['prepare', 'request', 'http_status', 'read_response', 'response_json', 'response_code', 'key_fields', 'signature', 'key_decrypt', 'key_json', 'packet', 'response_decrypt', 'response_decompress', 'cookie_select']);
 const record = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : null;
 const form = (values) => ({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(values) });
+const upstreamCode = (value) => Number.isSafeInteger(value) && Math.abs(value) <= 9999 ? value : null;
+
+function visitorFailure(attempt, error) {
+  const codes = new Set();
+  const collect = (item, depth = 0) => {
+    if (!item || depth > 3) return;
+    if (VISITOR_ERROR_CODES.has(item.code)) codes.add(item.code);
+    collect(item.cause, depth + 1);
+    if (Array.isArray(item.errors)) for (const child of item.errors.slice(0, 4)) collect(child, depth + 1);
+  };
+  collect(error);
+  const knownReasons = {
+    visitor_http_failure: 'upstream_http_status', visitor_upstream_code: 'upstream_code',
+    invalid_visitor_key: 'invalid_key_fields', invalid_visitor_key_signature: 'invalid_key_signature',
+    netease_response_too_large: 'response_too_large', netease_visitor_unavailable: 'visitor_cookie_unavailable',
+  };
+  const errorType = ['Error', 'TypeError', 'SyntaxError', 'RangeError', 'TimeoutError', 'AbortError'].includes(error?.name) ? error.name : 'Error';
+  return {
+    event: 'netease_visitor_failure',
+    stage: VISITOR_STAGES.has(attempt.stage) ? attempt.stage : 'unknown',
+    phase: VISITOR_PHASES.has(attempt.phase) ? attempt.phase : 'unknown',
+    httpStatus: Number.isInteger(attempt.httpStatus) && attempt.httpStatus >= 100 && attempt.httpStatus <= 599 ? attempt.httpStatus : null,
+    upstreamCode: upstreamCode(attempt.upstreamCode),
+    reason: Object.hasOwn(knownReasons, error?.message) ? knownReasons[error.message] : errorType === 'TimeoutError' ? 'timeout' : errorType === 'SyntaxError' ? 'invalid_json' : 'operation_failed',
+    errorType, errorCodes: [...codes],
+    elapsedMs: Math.max(0, Math.round(performance.now() - attempt.started)),
+    ...(typeof attempt.hasVisitorCookie === 'boolean' ? { hasVisitorCookie: attempt.hasVisitorCookie, cookieExpired: attempt.cookieExpired === true } : {}),
+  };
+}
+
+const logVisitorFailure = (detail) => process.stderr.write(`${JSON.stringify(detail)}\n`);
 
 export const json = (body, status = 200, cache = 'no-store') => new Response(JSON.stringify(body), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache },
@@ -78,53 +120,79 @@ function visitorPacket(data, keyState) {
   return { C: C.toString('base64url'), S: S.toString('base64'), R: R.toString('base64') };
 }
 
-function registrationBody(bytes) {
+function registrationBody(bytes, attempt) {
+  attempt.phase = 'response_json';
   try { return JSON.parse(bytes.toString()); } catch { /* Successful app responses use the encrypted format. */ }
+  attempt.phase = 'response_decrypt';
   let plain = ecb(XEAPI_RESPONSE_KEY, bytes, true);
-  if (plain[0] === 0x1f && plain[1] === 0x8b) plain = gunzipSync(plain, { maxOutputLength: MAX_RESPONSE_BYTES });
+  if (plain[0] === 0x1f && plain[1] === 0x8b) {
+    attempt.phase = 'response_decompress';
+    plain = gunzipSync(plain, { maxOutputLength: MAX_RESPONSE_BYTES });
+  }
+  attempt.phase = 'response_json';
   return JSON.parse(plain.toString());
 }
 
 const visitorSignature = (timestamp, nonce) => createHmac('sha256', XEAPI_SIGNING_KEY).update(String(timestamp) + nonce).digest('base64');
 
-async function registerVisitor(fetchImpl, now) {
-  const request = async (url, values, headers) => {
+async function registerVisitor(fetchImpl, now, attempt) {
+  const request = async (stage, url, values, headers) => {
+    Object.assign(attempt, { stage, phase: 'request', httpStatus: null, upstreamCode: null });
     const response = await fetchImpl(url, {
       ...form(values), headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8', 'user-agent': VISITOR_UA, ...headers },
       redirect: 'error', signal: AbortSignal.timeout(15_000),
     });
-    if (!response.ok) { await response.body?.cancel(); throw new HttpError(503, 'netease_visitor_unavailable'); }
+    attempt.httpStatus = response.status;
+    attempt.phase = 'http_status';
+    if (!response.ok) { await response.body?.cancel(); throw new Error('visitor_http_failure'); }
+    attempt.phase = 'read_response';
     return { headers: response.headers, bytes: await responseBytes(response) };
   };
   const deviceId = randomBytes(26).toString('hex').toUpperCase();
   const nonce = Array.from({ length: 16 }, () => String(randomInt(10))).join('');
   const timestamp = String(now());
-  const keyReply = await request('https://interface.music.163.com/api/bsr/sk/get', {
+  const keyReply = await request('public_key', 'https://interface.music.163.com/api/bsr/sk/get', {
     appVersion: '9.5.61', currentKeyVersion: '', deviceId, nonce, os: 'android', requestType: 'active',
     signature: visitorSignature(timestamp, nonce), t1: '', t2: '', timestamp, uid: '',
   }, { cookie: `deviceId=${deviceId}` });
+  attempt.phase = 'response_json';
   const envelope = JSON.parse(keyReply.bytes.toString());
+  attempt.phase = 'response_code';
+  attempt.upstreamCode = upstreamCode(envelope?.code);
+  if (envelope?.code !== 200) throw new Error('visitor_upstream_code');
+  attempt.phase = 'key_fields';
   const data = record(envelope?.data);
-  if (envelope?.code !== 200 || typeof data?.encryptedData !== 'string' || !['string', 'number'].includes(typeof data.timestamp)) throw new Error('invalid_visitor_key');
+  if (typeof data?.encryptedData !== 'string' || !['string', 'number'].includes(typeof data.timestamp)) throw new Error('invalid_visitor_key');
+  attempt.phase = 'signature';
   const expected = Buffer.from(visitorSignature(data.timestamp, nonce));
   const supplied = Buffer.from(String(data.signature ?? ''));
   if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) throw new Error('invalid_visitor_key_signature');
-  const key = JSON.parse(ecb(XEAPI_KEY, Buffer.from(data.encryptedData, 'base64'), true).toString());
+  attempt.phase = 'key_decrypt';
+  const keyBytes = ecb(XEAPI_KEY, Buffer.from(data.encryptedData, 'base64'), true);
+  attempt.phase = 'key_json';
+  const key = JSON.parse(keyBytes.toString());
+  attempt.phase = 'key_fields';
   if (typeof key?.publicKey !== 'string' || Buffer.from(key.publicKey, 'base64').length !== 32 || typeof key.sk !== 'string' || !key.sk || key.sk.length > 16384 || !['string', 'number'].includes(typeof key.version) || !String(key.version) || String(key.version).length > 128) throw new Error('invalid_visitor_key');
 
+  Object.assign(attempt, { stage: 'registration', phase: 'prepare', httpStatus: null, upstreamCode: null });
   const registeredAt = now();
   const buildver = String(Math.floor(registeredAt / 1000));
   const nuid = randomBytes(32).toString('hex');
   const fingerprint = `__remember_me=true; ntes_kaola_ad=1; _ntes_nuid=${nuid}; _ntes_nnid=${nuid},${registeredAt}; WNMCID=${randomBytes(3).toString('hex')}.${registeredAt}.01.0; WEVNSM=1.0.0; os=android; osver=16; appver=9.1.65; channel=netease; deviceId=${deviceId}; sDeviceId=${deviceId}; buildver=${buildver}`;
-  const result = await request('https://interface3.music.163.com/xeapi/register/anonimous', visitorPacket({ username: encodedUsername(deviceId) }, key), {
+  attempt.phase = 'packet';
+  const packet = visitorPacket({ username: encodedUsername(deviceId) }, key);
+  const result = await request('registration', 'https://interface3.music.163.com/xeapi/register/anonimous', packet, {
     cookie: fingerprint, 'X-Client-Enc-State': 'ENCRYPTED', 'x-aeapi': 'true',
     'x-deviceid': deviceId, 'x-os': 'android', 'x-osver': '16', 'x-appver': '9.1.65', 'x-sdeviceid': deviceId, 'x-buildver': buildver,
   });
-  if (registrationBody(result.bytes)?.code !== 200) throw new HttpError(503, 'netease_visitor_unavailable');
+  const body = registrationBody(result.bytes, attempt);
+  attempt.phase = 'response_code';
+  attempt.upstreamCode = upstreamCode(body?.code);
+  if (body?.code !== 200) throw new Error('visitor_upstream_code');
   return { headers: result.headers, fingerprint };
 }
 
-function visitorCookies(headers, now) {
+function visitorCookies(headers, now, attempt) {
   const cookies = new Map();
   let expires = now + VISITOR_TTL;
   for (const header of headers.getSetCookie()) {
@@ -138,6 +206,7 @@ function visitorCookies(headers, now) {
     const expiry = age ? now + Number(age.slice(8)) * 1000 : until ? Date.parse(until.slice(8)) : NaN;
     if (Number.isFinite(expiry)) expires = Math.min(expires, now + (expiry - now) * 0.9);
   }
+  Object.assign(attempt, { hasVisitorCookie: cookies.has('MUSIC_A'), cookieExpired: expires <= now });
   if (!cookies.has('MUSIC_A') || expires <= now) throw new HttpError(503, 'netease_visitor_unavailable');
   return { cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '), expires };
 }
@@ -158,9 +227,10 @@ function boundedInt(value, fallback, max) {
 }
 
 export class NetEase {
-  constructor({ fetchImpl = fetch, now = Date.now } = {}) {
+  constructor({ fetchImpl = fetch, now = Date.now, onVisitorFailure = logVisitorFailure } = {}) {
     this.fetchImpl = fetchImpl;
     this.now = now;
+    this.onVisitorFailure = onVisitorFailure;
     this.visitor = null;
     this.visitorPending = null;
     this.retryAfter = 0;
@@ -193,14 +263,17 @@ export class NetEase {
     if (now < this.retryAfter) throw new HttpError(503, 'netease_visitor_unavailable');
     this.visitor = null;
     this.visitorPending = (async () => {
+      const attempt = { stage: 'public_key', phase: 'prepare', httpStatus: null, upstreamCode: null, started: performance.now() };
       try {
-        const result = await registerVisitor(this.fetchImpl, this.now);
-        const { cookie, expires } = visitorCookies(result.headers, this.now());
+        const result = await registerVisitor(this.fetchImpl, this.now, attempt);
+        Object.assign(attempt, { stage: 'visitor_cookie', phase: 'cookie_select' });
+        const { cookie, expires } = visitorCookies(result.headers, this.now(), attempt);
         this.visitor = { cookie: `${cookie}; ${result.fingerprint}`, expires };
         this.retryAfter = 0;
         return this.visitor;
-      } catch {
+      } catch (error) {
         this.retryAfter = this.now() + RETRY_DELAY;
+        try { this.onVisitorFailure(visitorFailure(attempt, error)); } catch { /* The HTTP failure remains available when a log sink is closed. */ }
         throw new HttpError(503, 'netease_visitor_unavailable');
       } finally {
         this.visitorPending = null;

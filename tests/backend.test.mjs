@@ -291,6 +291,32 @@ test('unavailable anonymous registration is cooled down and retired account rout
   assert.equal(keys, 2);
 });
 
+test('music HTTP diagnostics record the first response and safe errors without request data', async (t) => {
+  const events = [];
+  const hidden = 'private-query-cookie-value';
+  const f = await fixture(t, { onMusicHttpEvent: (detail) => events.push(detail), fetchImpl: async (input, init) => {
+    const url = new URL(input);
+    if (url.pathname === '/api/bsr/sk/get') return visitorKeyReply(init);
+    if (url.pathname === '/xeapi/register/anonimous') return Response.json({ code: 200 }, { headers: { 'set-cookie': `MUSIC_A=${hidden}; Path=/` } });
+    if (url.pathname === '/api/song/enhance/player/url/v1') return Response.json({ code: 200, data: [{ code: 404, url: null }] });
+    return Response.json({ code: 200, result: { songs: [TRACK] } });
+  } });
+  const client = f.client();
+  assert.equal((await client.call('/api/health')).status, 200);
+  assert.deepEqual(events, []);
+  assert.equal((await client.call(`/netease/search?q=${hidden}`)).status, 200);
+  assert.deepEqual(events, [{ event: 'netease_first_response', method: 'GET', route: 'search', status: 200, first: true }]);
+  assert.equal((await client.call('/netease/search?q=another-query')).status, 200);
+  assert.equal(events.length, 1, 'later successful music responses stay quiet');
+  assert.equal((await client.call(`/netease/song/987654321?token=${hidden}`, undefined, { headers: { origin: `https://${hidden}.invalid`, cookie: `secret=${hidden}` } })).status, 403);
+  assert.deepEqual(events.at(-1), { event: 'netease_http_error', method: 'GET', route: 'song', status: 403, first: false, errorCode: 'origin_not_allowed' });
+  assert.equal((await client.call('/netease/audio/987654321')).status, 451);
+  assert.deepEqual(events.at(-1), { event: 'netease_http_error', method: 'GET', route: 'audio', status: 451, first: false, errorCode: 'audio_unavailable' });
+  assert.equal((await client.call(`/${hidden}?token=${hidden}`)).status, 404);
+  assert.equal(events.length, 3, 'unknown routes do not enter music diagnostics');
+  assert.doesNotMatch(JSON.stringify(events), /private-query|cookie|token|987654321|https:|MUSIC_A/);
+});
+
 test('schema migration preserves rooms and browser identity while removing account data', async (t) => {
   const f = await fixture(t);
   const host = f.client('migration-host');
