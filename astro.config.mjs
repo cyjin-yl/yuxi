@@ -24,6 +24,7 @@ export default defineConfig({
     sitemap(),
     // Image compression runs all files concurrently and can exhaust build memory.
     // Keep original artwork; image dimensions and lazy loading are handled above.
-    compress({ Image: false }),
+    // Astro already minifies CSS. The extra csso pass drops media range queries.
+    compress({ CSS: false, Image: false }),
   ],
 });

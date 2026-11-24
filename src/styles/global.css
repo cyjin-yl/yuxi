@@ -1186,6 +1186,7 @@ a.tag:hover {
 /* Search and wide archive layouts */
 :root { --layout-width: 78rem; }
 .home.home-wide, .nav { width: min(var(--layout-width), 100%); }
+.home-wide .post-list { display: grid; grid-template-columns: minmax(0, 1fr); }
 .home-search { display: flex; gap: .6rem; max-width: 44rem; margin: 0 0 1.5rem; }
 .home-search input { min-width: 0; flex: 1; }
 .home-search input, .home-search button, .blog-search-form input, .blog-search-form select, .blog-search-form button { font: inherit; font-family: var(--font-sans); color: var(--ink); background: var(--card); border: var(--hair) solid var(--rule); border-radius: var(--radius); padding: .6rem .75rem; min-height: 2.6rem; }
@@ -1209,7 +1210,7 @@ a.tag:hover {
 [data-search-results] { scroll-margin-top: 1.5rem; }
 .post-item-title, .post-item-desc { overflow-wrap: anywhere; }
 @media (min-width: 900px) {
-  .home-wide .post-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; }
+  .home-wide .post-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; }
   .home-wide .post-item { border-bottom: var(--hair) solid var(--rule); }
   .home-wide .post-item-link { height: 100%; padding-top: 1.2rem; padding-bottom: 1.2rem; }
 }
