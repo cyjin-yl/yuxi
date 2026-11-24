@@ -22,6 +22,8 @@ export default defineConfig({
     mdx(),
     react(),
     sitemap(),
-    compress(),
+    // Image compression runs all files concurrently and can exhaust build memory.
+    // Keep original artwork; image dimensions and lazy loading are handled above.
+    compress({ Image: false }),
   ],
 });
