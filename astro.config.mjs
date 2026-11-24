@@ -8,6 +8,29 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeImages from './src/lib/rehype-images.mjs';
 
+// The old post-build compressor changed CSS after its URL was hashed. Give all
+// corrected CSS (including ?url imports) fresh URLs while keeping other assets.
+const cssAssetRevision = {
+  name: 'css-asset-revision',
+  hooks: {
+    'astro:build:setup': ({ vite }) => {
+      for (const config of [vite, ...Object.values(vite.environments ?? {})]) {
+        const output = config.build?.rolldownOptions?.output;
+        for (const options of [output].flat()) {
+          const original = options?.assetFileNames;
+          if (!original) continue;
+          options.assetFileNames = (asset) => {
+            const pattern = typeof original === 'function' ? original(asset) : original;
+            return asset.names?.some((name) => name.endsWith('.css'))
+              ? pattern.replace('[hash]', '[hash].v2')
+              : pattern;
+          };
+        }
+      }
+    },
+  },
+};
+
 export default defineConfig({
   site: 'https://yvxi.cyjin.dev',
   trailingSlash: 'always',
@@ -26,5 +49,6 @@ export default defineConfig({
     // Keep original artwork; image dimensions and lazy loading are handled above.
     // Astro already minifies CSS. The extra csso pass drops media range queries.
     compress({ CSS: false, Image: false }),
+    cssAssetRevision,
   ],
 });
