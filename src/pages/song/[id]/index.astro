@@ -34,6 +34,14 @@ export function getStaticPaths() {
     if (root.dataset.songId === id) return; // already rendered for this song
     root.dataset.songId = id;
     root.dataset.state = 'loading';
+    var lifecycle = new AbortController();
+    document.addEventListener('astro:before-swap', function () {
+      lifecycle.abort();
+    }, { once: true, signal: lifecycle.signal });
+
+    function active() {
+      return !lifecycle.signal.aborted && root.isConnected && root.dataset.songId === id;
+    }
 
     function esc(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -47,6 +55,7 @@ export function getStaticPaths() {
     }
 
     function renderSong(song) {
+      if (!active()) return;
       var artist = (song.ar || []).map(function (a) { return a.name; }).join(' / ');
       var album = song.al ? song.al.name : '';
       var pic = song.al && song.al.picUrl ? song.al.picUrl : '';
@@ -69,7 +78,8 @@ export function getStaticPaths() {
     }
 
     function renderComments(body) {
-      var box = document.getElementById('song-comments');
+      if (!active()) return;
+      var box = root.querySelector('#song-comments');
       if (!box) return;
       var hot = body.hotComments || [];
       var comments = body.comments || [];
@@ -102,16 +112,17 @@ export function getStaticPaths() {
       return html;
     }
 
-    fetch('/netease/song/' + id)
+    fetch('/netease/song/' + id, { signal: lifecycle.signal })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (body) {
+        if (!active()) return;
         var song = (body.songs || [])[0];
         if (!song) {
           root.innerHTML = '<p class="netease-loading">找不到这首歌。</p>';
           return;
         }
         renderSong(song);
-        return fetch('/netease/comments/' + id + '?limit=20').then(function (r) {
+        return fetch('/netease/comments/' + id + '?limit=20', { signal: lifecycle.signal }).then(function (r) {
           return r.ok ? r.json() : { hotComments: [], comments: [], total: 0 };
         });
       })
@@ -119,7 +130,7 @@ export function getStaticPaths() {
         if (comments) renderComments(comments);
       })
       .catch(function () {
-        if (root.dataset.state === 'loading') {
+        if (active() && root.dataset.state === 'loading') {
           root.innerHTML = '<p class="netease-loading">加载失败，请稍后刷新。</p>';
         }
       });

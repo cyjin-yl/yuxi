@@ -10,11 +10,11 @@
     "test": "npm run test:frontend && npm run test:backend",
     "check:site": "node scripts/verify-site.mjs",
     "start:backend": "node server/index.mjs",
-    "test:frontend": "vitest run tests/party-changed.test.ts tests/party-poll-404.test.ts tests/party-session.test.ts tests/player-initialization.test.ts tests/party-local-track.test.ts",
-    "test:backend": "node --test tests/backend*.test.mjs",
-    "test:legacy-worker": "vitest run tests/party-do.test.ts"
+    "test:frontend": "vitest run tests/party-session.test.ts tests/player-initialization.test.ts tests/party-local-track.test.ts tests/player-party-sync.test.ts tests/public-playlist.test.ts tests/blog-search.test.ts tests/blog-explorer-history.test.ts",
+    "test:backend": "node --test tests/backend*.test.mjs"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "^7.2.1",
     "@astrojs/mdx": "^7.0.2",
     "@astrojs/react": "^6.0.1",
     "@astrojs/sitemap": "^3.7.3",
@@ -22,23 +22,16 @@
     "astro": "^7.0.7",
     "lucide-react": "^1.26.0",
     "mermaid": "^11.16.0",
-    "NeteaseCloudMusicApi": "^4.32.0",
-    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0",
-    "yaml": "^2.9.0",
-    "@astrojs/markdown-remark": "^7.2.1"
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "@cloudflare/workers-types": "^5.20260822.1",
-    "esbuild": "^0.28.2",
-    "miniflare": "^3.20250718.3",
     "typescript": "5.9",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.125.0"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=22.13.0"

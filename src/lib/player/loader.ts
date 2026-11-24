@@ -2,7 +2,7 @@
 import playerStyles from '../../styles/player.css?url';
 import sharedStyles from '../../styles/music-shared.css?url';
 
-const PLAY_ACTION = '[data-play-track], [data-play-netease-song], [data-play-liked], [data-play-netease-playlist], [data-play-netease], [data-play-collection], [data-netease-play]';
+const PLAY_ACTION = '[data-play-track], [data-play-netease-song], [data-play-liked], [data-play-netease-playlist], [data-play-collection], [data-netease-play]';
 
 let loading: Promise<typeof import('./bindings')> | undefined;
 

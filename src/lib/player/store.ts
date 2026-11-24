@@ -31,7 +31,6 @@ import {
 } from './likes';
 
 const STORAGE_KEY = 'yuxi-player-v1';
-const NETEASE_COLLECTION_ID = 'netease-current';
 const SEARCH_COLLECTION_ID = 'netease-search';
 
 type Listener = () => void;
@@ -433,12 +432,7 @@ class YuxiPlayer {
     void this.loadCurrent(true);
   }
 
-  /**
-   * Load the user's NetEase "English Essentials 40" playlist through the
-   * same-origin proxy and play it. All NetEase traffic stays server-side:
-   * the Pages Function attaches the KV session cookie, the browser only ever
-   * talks to /netease/*.
-   */
+  /** Add a public playlist returned by the same-origin music service. */
   private ingestNeteasePlaylist(id: string, name: string, coverUrl: string | undefined, songs: NeteaseSong[]): void {
     if (!this.catalog) this.catalog = { version: 1, collections: [], tracks: {} };
     const trackIds: string[] = [];
@@ -450,7 +444,7 @@ class YuxiPlayer {
     const collection = {
       id,
       title: name,
-      description: '来自网易云账户的歌单，经服务端代理播放。',
+      description: '网易云公开歌单',
       coverUrl,
       kind: 'music' as const,
       trackIds,
@@ -460,23 +454,7 @@ class YuxiPlayer {
     else this.catalog.collections.push(collection);
   }
 
-  async loadNeteaseCurrent(): Promise<void> {
-    if (!this.ready) await this.init();
-    const res = await fetch('/netease/playlist/current');
-    if (!res.ok) throw new Error(`netease_playlist_${res.status}`);
-    const body = (await res.json()) as { playlist?: { name?: string; coverImgUrl?: string; tracks?: NeteaseSong[] } };
-    const songs = body.playlist?.tracks ?? [];
-    if (!songs.length) throw new Error('netease_playlist_empty');
-    this.ingestNeteasePlaylist(
-      NETEASE_COLLECTION_ID,
-      body.playlist?.name || '网易云歌单',
-      body.playlist?.coverImgUrl,
-      songs,
-    );
-    this.playCollection(NETEASE_COLLECTION_ID);
-  }
-
-  /** Load any playlist from the account by its NetEase id and play it. */
+  /** Load and play a public NetEase playlist. */
   async loadNeteasePlaylist(playlistId: string): Promise<void> {
     if (!this.ready) await this.init();
     const res = await fetch(`/netease/playlist/${playlistId}`);
@@ -501,6 +479,7 @@ class YuxiPlayer {
     const body = (await res.json()) as { result?: { songs?: NeteaseSong[] } };
     this.searchResults = (body.result?.songs ?? []).map(neteaseSongToTrack);
     this.emit();
+    return this.searchResults;
   }
   playSearchResult(index: number): void {
     const track = this.searchResults[index];
@@ -984,11 +963,7 @@ class YuxiPlayer {
     const useIncomingQueue = incoming.queueAt >= current.queueAt;
     const messages = new Map(current.chat.map((message) => [message.id, message]));
     for (const message of incoming.chat) messages.set(message.id, message);
-    const members = new Map(current.members.map((member) => [member.id, member]));
-    for (const member of incoming.members) {
-      const prior = members.get(member.id);
-      if (!prior || member.lastSeen >= prior.lastSeen) members.set(member.id, member);
-    }
+    const members = incoming.updatedAt >= current.updatedAt ? incoming.members : current.members;
     return {
       ...current,
       ...incoming,
@@ -996,7 +971,7 @@ class YuxiPlayer {
       state,
       queue: useIncomingQueue ? incoming.queue : current.queue,
       queueAt: Math.max(current.queueAt, incoming.queueAt),
-      members: [...members.values()].sort((a, b) => a.joinedAt - b.joinedAt),
+      members: [...members].sort((a, b) => a.joinedAt - b.joinedAt),
       chat: [...messages.values()].sort((a, b) => a.at - b.at).slice(-100),
     };
   }
@@ -1096,7 +1071,7 @@ class YuxiPlayer {
     try {
       await this.applyPartyRoom(await heartbeat(room.code));
     } catch (err) {
-      // Room gone (alarm cleanup, host deleted it) — leave cleanly so the UI
+      // Room gone — leave cleanly so the UI
       // resets instead of polling a 404 forever. Transient network errors
       // just retry on the next tick.
       if (err instanceof Error && err.message === 'party_404') {

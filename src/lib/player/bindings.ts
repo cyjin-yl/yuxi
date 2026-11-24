@@ -34,8 +34,6 @@ export async function playFromTarget(button: HTMLElement) {
   } else if (button.hasAttribute('data-play-netease-playlist')) {
     const id = button.dataset.playNeteasePlaylist;
     if (id) await player.loadNeteasePlaylist(id);
-  } else if (button.hasAttribute('data-play-netease')) {
-    await player.loadNeteaseCurrent();
   } else if (button.hasAttribute('data-play-collection')) {
     const id = button.dataset.playCollection;
     if (id) await player.playCollection(id, button.dataset.start);

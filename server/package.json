@@ -9,8 +9,5 @@
   "scripts": {
     "start": "node index.mjs",
     "test": "node --test ../tests/backend*.test.mjs"
-  },
-  "dependencies": {
-    "qrcode": "1.5.4"
   }
 }

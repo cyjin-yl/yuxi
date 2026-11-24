@@ -4,6 +4,7 @@ import Header from '../../components/header.astro';
 import Footer from '../../components/footer.astro';
 import PostList from '../../components/PostList.astro';
 import Pagination from '../../components/Pagination.astro';
+import BlogExplorer from '../../components/BlogExplorer.astro';
 import { getPublishedPosts, paginate, POSTS_PER_PAGE } from '../../lib/posts';
 
 const all = await getPublishedPosts();
@@ -13,12 +14,13 @@ const { items, currentPage, totalPages, total } = paginate(all, 1, POSTS_PER_PAG
 <BaseLayout title="博客" description="所有文章，按时间倒序。">
   <Header currentPath="/blog/" />
 
-  <main id="main" class="home">
+  <main id="main" class="home home-wide">
     <div class="home-intro">
       <h1>博客</h1>
-      <p>共 {total} 篇，按时间倒序。</p>
+      <p>共 {total} 篇。可以按关键词、标签或月份查找。</p>
     </div>
 
+    <BlogExplorer>
     <PostList posts={items} />
     <Pagination
       currentPage={currentPage}
@@ -26,6 +28,7 @@ const { items, currentPage, totalPages, total } = paginate(all, 1, POSTS_PER_PAG
       indexPath="/blog/"
       pageBasePath="/blog/page"
     />
+    </BlogExplorer>
   </main>
 
   <Footer />

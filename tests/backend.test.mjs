@@ -3,15 +3,35 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { createCipheriv, createHmac, generateKeyPairSync } from 'node:crypto';
 import { createBackend } from '../server/index.mjs';
 
 const TRACK = { id: '255249', title: 'A track', artist: 'An artist', duration: 200 };
 const ORIGIN = 'http://localhost';
-const KEY = Buffer.alloc(32, 29);
+
+function visitorKeyReply(init) {
+  const params = new URLSearchParams(init.body);
+  const headers = new Headers(init.headers);
+  assert.equal(init.method, 'POST');
+  assert.equal(init.redirect, 'error');
+  assert.match(params.get('deviceId'), /^[A-F0-9]{52}$/);
+  assert.match(params.get('nonce'), /^[0-9]{16}$/);
+  assert.equal(params.get('os'), 'android');
+  assert.match(headers.get('user-agent'), /^NeteaseMusic\/9\.5\.61\./);
+  assert.equal(headers.get('cookie'), `deviceId=${params.get('deviceId')}`);
+  const signature = createHmac('sha256', 'mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==').update(params.get('timestamp') + params.get('nonce')).digest('base64');
+  assert.equal(params.get('signature'), signature);
+  const { publicKey } = generateKeyPairSync('x25519');
+  const state = { publicKey: Buffer.from(publicKey.export({ format: 'der', type: 'spki' })).subarray(-32).toString('base64'), version: 1, sk: 'fixture-key' };
+  const cipher = createCipheriv('aes-256-ecb', Buffer.from('ab1d5a430f6bb04a3f01e81ddd72bd916d5ce591248ac128714806d7f8fb1b84', 'hex'), null);
+  const encryptedData = Buffer.concat([cipher.update(JSON.stringify(state)), cipher.final()]).toString('base64');
+  return Response.json({ code: 200, data: { timestamp: params.get('timestamp'), signature, encryptedData } });
+}
 
 async function fixture(t, extra = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'yuxi-backend-'));
-  const opts = { dbPath: join(dir, 'state.sqlite'), audioDir: join(dir, 'audio'), publicOrigin: ORIGIN, sessionKey: KEY, rateLimit: false, ...extra };
+  const opts = { dbPath: join(dir, 'state.sqlite'), audioDir: join(dir, 'audio'), publicOrigin: ORIGIN, rateLimit: false, ...extra };
   let app = createBackend(opts);
   let base = await app.listen(0);
   const clients = [];
@@ -115,6 +135,24 @@ test('room code collision never overwrites a room and concurrent changes are not
   assert.ok(!playing.queue.some((item) => item.id === 'q-3'));
 });
 
+test('same-millisecond playback changes have ordered revisions and a real-time playback anchor', async (t) => {
+  let now = 1_800_000_000_000;
+  const f = await fixture(t, { now: () => now });
+  const host = f.client('clock-host');
+  const created = await (await host.party('/create', { track: TRACK, playing: true, offset: 10 })).json();
+  const paused = await (await host.party(`/${created.code}/pause`, { offset: 11 })).json();
+  const playing = await (await host.party(`/${created.code}/play`, { track: TRACK, offset: 12 })).json();
+  assert.ok(created.state.serverAt < paused.state.serverAt);
+  assert.ok(paused.state.serverAt < playing.state.serverAt, 'a delayed pause response can be identified as older than the following play');
+  assert.equal(paused.state.hostAt, now);
+  assert.equal(playing.state.hostAt, now);
+  const latest = await (await host.call(`/netease/party/${created.code}`)).json();
+  assert.deepEqual(latest.state, playing.state);
+  now += 5000;
+  const stopped = await (await host.party(`/${created.code}/pause`)).json();
+  assert.equal(stopped.state.offset, 17, 'elapsed playback uses the wall-clock anchor rather than the revision number');
+});
+
 test('client identity, request limits and internal maintenance routes have enforceable boundaries', async (t) => {
   const f = await fixture(t);
   const host = f.client('host-id');
@@ -155,51 +193,132 @@ test('discovery reflects live membership after timeout without stale registry ro
   assert.equal((await (await host.call('/netease/party')).json()).rooms.length, 1);
 });
 
-test('NetEase login is per-browser, QR ownership is checked, cookies are encrypted and never returned', async (t) => {
-  let keyNumber = 0;
+test('anonymous NetEase credentials are lazy, shared, refreshed and kept inside the server', async (t) => {
+  let now = 1_800_000_000_000;
+  let registrations = 0;
+  const calls = [];
   const fetchImpl = async (input, init) => {
     const url = new URL(input);
-    if (url.pathname.endsWith('/unikey')) return Response.json({ code: 200, unikey: `qr-${++keyNumber}` });
-    if (url.pathname.endsWith('/client/login')) {
-      const key = new URLSearchParams(init.body).get('key');
-      return Response.json({ code: 803, cookie: `MUSIC_U=private-${key}; Path=/;` });
+    const cookie = new Headers(init.headers).get('cookie');
+    calls.push({ path: url.pathname, cookie });
+    assert.ok(!cookie.includes('MUSIC_U='));
+    assert.ok(!cookie.includes('browser-cookie'));
+    if (url.pathname === '/api/bsr/sk/get') {
+      assert.equal(url.origin, 'https://interface.music.163.com');
+      return visitorKeyReply(init);
     }
-    if (url.pathname.endsWith('/account/get')) {
-      const cookie = new Headers(init.headers).get('cookie');
-      return Response.json({ code: 200, profile: { userId: cookie.includes('qr-1') ? 101 : 102, nickname: cookie.includes('qr-1') ? 'Alice' : 'Bob' }, cookie: 'should-never-leak' });
+    if (url.pathname === '/xeapi/register/anonimous') {
+      assert.equal(url.origin, 'https://interface3.music.163.com');
+      const params = new URLSearchParams(init.body);
+      assert.deepEqual([...params.keys()], ['C', 'S', 'R']);
+      assert.match(params.get('C'), /^[A-Za-z0-9_-]{100,}$/);
+      assert.ok(Buffer.from(params.get('S'), 'base64').length > 60);
+      assert.equal(new Headers(init.headers).get('x-client-enc-state'), 'ENCRYPTED');
+      assert.equal(new Headers(init.headers).get('x-os'), 'android');
+      registrations++;
+      return Response.json({ code: 200 }, { headers: [
+        ['set-cookie', `MUSIC_A=visitor-${registrations}; Max-Age=3600; Path=/; HttpOnly`],
+        ['set-cookie', '__csrf=visitor-csrf; Path=/'],
+        ['set-cookie', 'MUSIC_U=discard-account-cookie; Path=/'],
+      ] });
     }
-    if (url.pathname.endsWith('/user/playlist')) return Response.json({ code: 200, playlist: [{ id: 123, name: 'Private playlist', trackCount: 1 }], token: 'do-not-return' });
-    throw new Error('unexpected upstream route');
+    assert.match(cookie, /MUSIC_A=visitor-\d+/);
+    if (url.pathname === '/api/v6/playlist/detail' && url.searchParams.get('id') === '99') return Response.json({ code: 401 });
+    return Response.json({ code: 200, songs: [TRACK], MUSIC_A: 'hide-visitor', nested: { cookie: 'hide-cookie', __csrf: 'hide-csrf' } });
   };
-  const f = await fixture(t, { fetchImpl, qrEncoder: async () => '<svg/>', importToken: 'an-import-token-with-at-least-24-characters' });
-  const alice = f.client('alice');
-  const bob = f.client('bob');
-  const aQr = await (await alice.call('/netease/auth/qr/create', {})).json();
-  assert.match(aQr.qrImg, /^data:image\/svg\+xml/);
-  assert.equal((await bob.call('/netease/auth/qr/check', { key: aQr.key })).status, 403);
-  const login = await (await alice.call('/netease/auth/qr/check', { key: aQr.key })).json();
-  assert.equal(login.authenticated, true);
-  assert.equal(login.scope, 'browser');
-  assert.equal(login.profile.nickname, 'Alice');
-  assert.ok(!JSON.stringify(login).includes('private-'));
-  assert.deepEqual(await (await bob.call('/netease/auth/status')).json(), { authenticated: false, profile: null, scope: 'browser' });
-  assert.equal((await bob.call('/netease/playlists/mine')).status, 401);
-  const bQr = await (await bob.call('/netease/auth/qr/create', {})).json();
-  await bob.call('/netease/auth/qr/check', { key: bQr.key });
-  assert.equal((await (await alice.call('/netease/auth/status')).json()).profile.nickname, 'Alice');
-  assert.equal((await (await bob.call('/netease/auth/status')).json()).profile.nickname, 'Bob');
-  const stored = f.app.store.db.prepare('SELECT cookie FROM sessions WHERE cookie IS NOT NULL').all();
-  assert.equal(stored.length, 2);
-  assert.ok(stored.every((row) => !row.cookie.includes('MUSIC_U') && !row.cookie.includes('private-')));
-  assert.equal((await bob.call('/netease/auth/import', { cookie: 'MUSIC_U=foo' })).status, 401);
-  const playlists = await (await alice.call('/netease/playlists/mine')).json();
-  assert.equal(playlists.playlists[0].id, '123');
-  assert.ok(!JSON.stringify(playlists).includes('do-not-return'));
+  const f = await fixture(t, { fetchImpl, now: () => now });
+  const client = f.client();
+  assert.equal((await client.call('/api/health')).status, 200);
+  assert.equal(registrations, 0);
+  const responses = await Promise.all(Array.from({ length: 8 }, (_, i) => client.call(`/netease/song/${i + 1}`, undefined, { headers: { cookie: 'MUSIC_A=browser-cookie; MUSIC_U=browser-cookie' } })));
+  for (const response of responses) {
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('set-cookie'), null);
+    assert.ok(!(await response.text()).includes('hide-'));
+  }
+  assert.equal(registrations, 1, 'concurrent requests share one anonymous registration');
+  assert.equal(f.app.store.db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 0);
+  const beforeCached = calls.length;
+  assert.equal((await client.call('/netease/song/1')).status, 200);
+  assert.equal(calls.length, beforeCached);
+  now += 31_000;
+  assert.equal((await client.call('/netease/playlist/99')).status, 403);
+  assert.equal((await client.call('/netease/song/99')).status, 200);
+  assert.equal(registrations, 1, 'a resource permission denial preserves the valid visitor for public requests');
+  now += 3_240_001;
+  assert.equal((await client.call('/netease/song/100')).status, 200);
+  assert.equal(registrations, 2, 'cookie expiry triggers a fresh visitor');
   await f.restart();
-  assert.equal((await (await alice.call('/netease/auth/status')).json()).profile.nickname, 'Alice');
-  await alice.call('/netease/auth/logout', {});
-  assert.equal((await (await alice.call('/netease/auth/status')).json()).authenticated, false);
-  assert.equal((await (await bob.call('/netease/auth/status')).json()).authenticated, true);
+  assert.equal((await client.call('/netease/song/1')).status, 200);
+  assert.equal(registrations, 3, 'a process restart starts a fresh anonymous session');
+});
+
+test('unavailable anonymous registration is cooled down and retired account routes stay closed', async (t) => {
+  let now = 1_800_000_000_000;
+  let attempts = 0;
+  let keys = 0;
+  const f = await fixture(t, { now: () => now, fetchImpl: async (input, init) => {
+    if (new URL(input).pathname === '/api/bsr/sk/get') { keys++; return visitorKeyReply(init); }
+    assert.equal(new URL(input).pathname, '/xeapi/register/anonimous');
+    attempts++;
+    return Response.json({ code: 200 }, { headers: { 'set-cookie': 'MUSIC_U=an-account-is-not-a-visitor; Path=/' } });
+  } });
+  const client = f.client();
+  for (const [path, body] of [
+    ['/netease/auth/qr/create', {}], ['/netease/auth/qr/check', { key: 'old-key' }],
+    ['/netease/auth/import', { cookie: 'MUSIC_U=old-cookie' }], ['/netease/auth/logout', {}],
+    ['/netease/auth/status'], ['/netease/playlists/mine'], ['/netease/playlist/current'],
+  ]) {
+    const response = await client.call(path, body);
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get('set-cookie'), null);
+  }
+  assert.equal(attempts, 0);
+  assert.equal(keys, 0);
+  assert.equal((await client.call('/netease/search?q=')).status, 400);
+  assert.equal((await client.call('/netease/song/0')).status, 404);
+  assert.equal(attempts, 0);
+  const failed = await client.call('/netease/song/1');
+  assert.equal(failed.status, 503);
+  assert.deepEqual(await failed.json(), { error: 'netease_visitor_unavailable' });
+  assert.equal((await client.call('/netease/song/2')).status, 503);
+  assert.equal(attempts, 1);
+  assert.equal(keys, 1);
+  assert.equal((await client.party('/create', { track: TRACK })).status, 200);
+  now += 30_001;
+  assert.equal((await client.call('/netease/song/3')).status, 503);
+  assert.equal(attempts, 2);
+  assert.equal(keys, 2);
+});
+
+test('schema migration preserves rooms and browser identity while removing account data', async (t) => {
+  const f = await fixture(t);
+  const host = f.client('migration-host');
+  const queued = { ...TRACK, id: 'migration-queued' };
+  const code = (await (await host.party('/create', { track: TRACK, queue: [queued] })).json()).code;
+  await host.party(`/${code}/chat`, { text: 'Keep this room' });
+  await f.app.close();
+  const old = new DatabaseSync(f.opts.dbPath);
+  old.exec(`
+    ALTER TABLE sessions ADD COLUMN cookie TEXT;
+    UPDATE sessions SET cookie = 'retired-account-ciphertext';
+    CREATE TABLE qr_keys (key TEXT PRIMARY KEY, session_hash TEXT REFERENCES sessions(hash), expires_at INTEGER);
+    INSERT INTO qr_keys SELECT 'retired-qr-key', hash, expires_at FROM sessions;
+    PRAGMA user_version = 1;
+  `);
+  old.close();
+  await f.restart();
+  assert.equal(f.app.store.db.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.ok(!f.app.store.db.prepare('PRAGMA table_info(sessions)').all().some((column) => column.name === 'cookie'));
+  assert.equal(f.app.store.db.prepare("SELECT name FROM sqlite_schema WHERE name = 'qr_keys'").get(), undefined);
+  const room = await (await host.party(`/${code}/heartbeat`)).json();
+  assert.equal(room.hostId, host.id);
+  assert.equal(room.chat.at(-1).text, 'Keep this room');
+  assert.deepEqual(room.queue, [queued]);
+  await f.app.close();
+  const bytes = await readFile(f.opts.dbPath);
+  assert.ok(!bytes.includes(Buffer.from('retired-account-ciphertext')));
+  assert.ok(!bytes.includes(Buffer.from('retired-qr-key')));
 });
 
 test('local audio serves correct Range, suffix, HEAD, conditional and unsatisfiable responses', async (t) => {
@@ -235,6 +354,8 @@ test('media proxy forwards byte ranges, streams 206 and rejects upstream SSRF UR
   const fetchImpl = async (input, init) => {
     const url = new URL(input);
     calls.push({ url: url.href, headers: new Headers(init.headers) });
+    if (url.pathname === '/api/bsr/sk/get') return visitorKeyReply(init);
+    if (url.pathname === '/xeapi/register/anonimous') return Response.json({ code: 200 }, { headers: { 'set-cookie': 'MUSIC_A=media-visitor; Path=/' } });
     if (url.hostname === 'github.com') return new Response(null, { status: 302, headers: { location: 'https://release-assets.githubusercontent.com/release/sample.m4a' } });
     if (url.pathname.endsWith('/api/song/enhance/player/url/v1')) {
       const id = new URLSearchParams(init.body).get('ids');

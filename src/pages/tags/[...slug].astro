@@ -24,10 +24,10 @@ const posts = (await getPublishedPosts()).filter((post) => post.data.tags?.inclu
 <BaseLayout title={`# ${tag}`} description={`标签 ${tag} 下的 ${posts.length} 篇文章。`}>
   <Header currentPath="/tags/" />
 
-  <main id="main" class="home">
+  <main id="main" class="home home-wide">
     <div class="home-intro">
       <h1># {tag}</h1>
-      <p>{posts.length} 篇文章</p>
+      <p>{posts.length} 篇文章 · <a href={`/blog/?tag=${encodeURIComponent(tag)}`}>搜索这个标签</a></p>
     </div>
 
     <PostList posts={posts} />

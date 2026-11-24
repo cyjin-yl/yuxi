@@ -45,6 +45,7 @@ export interface LyricLine {
 }
 
 export type PlayMode = 'sequence' | 'repeat-one' | 'repeat-all' | 'stop' | 'shuffle';
+export type PlayerExpand = 'mini' | 'sheet' | 'full';
 
 export interface PlayerSnapshot {
   collectionId: string | null;

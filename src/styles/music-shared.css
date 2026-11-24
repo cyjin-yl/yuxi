@@ -18,9 +18,9 @@
   filter: blur(0.8px) saturate(1.05);
   opacity: 1;
   transition:
-    filter var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
-    opacity var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
-    transform var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1);
+    filter var(--yp-prog-duration, 220ms) cubic-bezier(.22,1,.36,1),
+    opacity var(--yp-prog-duration, 220ms) cubic-bezier(.22,1,.36,1),
+    transform var(--yp-prog-duration, 220ms) cubic-bezier(.22,1,.36,1);
 }
 /* Non-NetEase: no smaller byte-size, fake the placeholder with blur on the
    full URL itself — the browser still streams progressive. */
@@ -37,8 +37,8 @@
   opacity: 0;
   transform: scale(1.03);
   transition:
-    opacity var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
-    transform var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1);
+    opacity var(--yp-prog-duration, 220ms) cubic-bezier(.22,1,.36,1),
+    transform var(--yp-prog-duration, 220ms) cubic-bezier(.22,1,.36,1);
 }
 .yp-prog-full.is-loaded { opacity: 1; transform: scale(1); }
 

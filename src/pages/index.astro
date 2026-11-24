@@ -13,12 +13,17 @@ const total = all.length;
 <BaseLayout>
   <Header currentPath="/" />
 
-  <main id="main" class="home">
+  <main id="main" class="home home-wide">
     <div class="home-intro">
       <h1>余隙</h1>
       <p>余隙的笔记本。写算法、写数学、写思考过程。不急，慢慢看就好。</p>
     </div>
 
+    <form class="home-search" action="/blog/" method="get" role="search">
+      <label class="sr-only" for="home-query">搜索全部文章</label>
+      <input id="home-query" name="q" type="search" placeholder="搜索全部文章…" maxlength="200" />
+      <button type="submit">搜索</button>
+    </form>
     <PostList posts={posts} />
 
     {

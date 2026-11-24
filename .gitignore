@@ -2,9 +2,5 @@ node_modules/
 dist/
 .astro/
 .env
-.wrangler/
-
-# vitest/miniflare test artifacts
-tests/party-do-bundle.mjs
-
-# trigger CF Pages redeploy 2026-10-03
+__pycache__/
+*.py[cod]

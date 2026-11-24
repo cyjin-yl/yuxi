@@ -1,0 +1,36 @@
+---
+import { getBlogSearchIndex } from '../lib/blog-search-index';
+const index = await getBlogSearchIndex();
+const tags = [...new Set(index.posts.flatMap((post) => post.tags))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+const months = [...new Set(index.posts.map((post) => post.date.slice(0, 7)))].sort().reverse();
+---
+
+<section class="blog-explorer" data-blog-explorer data-index-url={`/blog/search-index.json?v=${index.hash}`} aria-label="查找文章">
+  <form class="blog-search-form" action="/blog/" method="get" data-search-form hidden>
+    <div class="blog-search-query">
+      <label for="blog-query">搜索文章</label>
+      <div class="blog-search-query-row">
+        <input id="blog-query" name="q" type="search" maxlength="200" autocomplete="off" placeholder="标题、标签或正文里的关键词…" aria-describedby="blog-search-status" />
+        <button type="submit">搜索</button>
+      </div>
+    </div>
+    <div class="blog-search-filters">
+      <label>标签<select name="tag"><option value="">全部标签</option>{tags.map((tag) => <option value={tag}>{tag}</option>)}</select></label>
+      <label>月份<select name="month"><option value="">全部月份</option>{months.map((month) => <option value={month}>{month.replace('-', ' 年 ')} 月</option>)}</select></label>
+      <label>排序<select name="sort"><option value="relevance">默认排序</option><option value="newest">最新在前</option><option value="oldest">最早在前</option></select></label>
+      <button class="blog-search-clear" type="button" data-search-clear hidden>清空筛选</button>
+      <a href="/tags/">按标签浏览</a>
+    </div>
+  </form>
+  <noscript><p class="page-lede">下方可以继续翻页，也可以<a href="/tags/">按标签浏览文章</a>。</p></noscript>
+  <p id="blog-search-status" class="blog-search-status" role="status" aria-live="polite"></p>
+  <div data-search-fallback><slot /></div>
+  <div data-search-output hidden>
+    <div data-search-results tabindex="-1" aria-label="文章搜索结果"></div>
+    <div data-search-pagination></div>
+  </div>
+</section>
+
+<script>
+  import '../lib/blog-explorer-loader';
+</script>

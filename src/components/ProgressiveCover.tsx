@@ -9,7 +9,7 @@ type Props = {
   thumbSize?: number;
   /** Spinner / fallback element shown while no src is set at all. */
   fallback?: React.ReactNode;
-  /** Spring cross-fade duration in ms. Default 650 (matches the player art enter). */
+  /** Cover cross-fade duration in milliseconds. */
   duration?: number;
 };
 
@@ -30,7 +30,7 @@ export default function ProgressiveCover({
   className = '',
   thumbSize = 32,
   fallback = null,
-  duration = 650,
+  duration = 220,
 }: Props) {
   const [fullLoaded, setFullLoaded] = useState(false);
   const fullRef = useRef<HTMLImageElement>(null);

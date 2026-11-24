@@ -13,7 +13,6 @@ Environment=NODE_ENV=production
 Environment=PORT=8787
 Environment=YUXI_ORIGIN=https://yvxi.cyjin.dev
 Environment=YUXI_DB=/var/lib/yuxi/yuxi.sqlite
-Environment=YUXI_KEY_FILE=/var/lib/yuxi/session.key
 Environment=YUXI_AUDIO_DIR=/var/lib/yuxi/audio
 Environment=YUXI_TRUST_PROXY=1
 EnvironmentFile=-/etc/yuxi/backend.env

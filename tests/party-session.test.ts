@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createRoom } from '../src/lib/player/party';
+import { createRoom, listRooms } from '../src/lib/player/party';
 
 const room = { code: 'ABC123', name: 'Test', state: {}, members: [], queue: [], chat: [] };
 
@@ -31,5 +31,17 @@ describe('party browser session reconciliation', () => {
     vi.stubGlobal('fetch', fetch);
     await expect(createRoom('Test')).rejects.toThrow('party_409');
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses the browser session when listing rooms', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ rooms: [{ code: 'ABC123', name: 'Test', members: 2, host: true }] }));
+    vi.stubGlobal('fetch', fetch);
+    expect(await listRooms()).toEqual([{ code: 'ABC123', name: 'Test', members: 2, host: true }]);
+    expect(fetch).toHaveBeenCalledWith('/netease/party');
+  });
+
+  it('requires the Node API room response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ room })));
+    await expect(createRoom('Test')).rejects.toThrow('party_invalid_response');
   });
 });

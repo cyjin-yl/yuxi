@@ -1,54 +1,58 @@
 ---
+import { pageNumbers } from '../lib/pagination';
 interface Props {
   currentPage: number;
   totalPages: number;
-  /** Path for page 1, e.g. `/blog/` */
   indexPath: string;
-  /** Path prefix for pages 2+, e.g. `/blog/page` → `/blog/page/2/` */
   pageBasePath: string;
 }
-
 const { currentPage, totalPages, indexPath, pageBasePath } = Astro.props;
-
 if (totalPages <= 1) return;
-
-function hrefFor(page: number) {
-  if (page <= 1) {
-    const root = indexPath.endsWith('/') ? indexPath : `${indexPath}/`;
-    return root;
-  }
-  const root = pageBasePath.replace(/\/$/, '');
-  return `${root}/${page}/`;
-}
-
-const prev = currentPage > 1 ? hrefFor(currentPage - 1) : null;
-const next = currentPage < totalPages ? hrefFor(currentPage + 1) : null;
+const hrefFor = (page: number) => page <= 1 ? `${indexPath.replace(/\/$/, '')}/` : `${pageBasePath.replace(/\/$/, '')}/${page}/`;
+const controls = [
+  { page: 1, label: '首页', disabled: currentPage === 1 },
+  { page: currentPage - 1, label: '上一页', disabled: currentPage === 1, rel: 'prev' },
+];
+const after = [
+  { page: currentPage + 1, label: '下一页', disabled: currentPage === totalPages, rel: 'next' },
+  { page: totalPages, label: '末页', disabled: currentPage === totalPages },
+];
 ---
-
-<nav class="pagination" aria-label="分页">
-  {
-    prev ? (
-      <a href={prev} rel="prev">
-        ← 上一页
-      </a>
-    ) : (
-      <span class="disabled" aria-disabled="true">
-        ← 上一页
-      </span>
-    )
-  }
-  <p class="pagination-status">
-    第 {currentPage} / {totalPages} 页
-  </p>
-  {
-    next ? (
-      <a href={next} rel="next">
-        下一页 →
-      </a>
-    ) : (
-      <span class="disabled" aria-disabled="true">
-        下一页 →
-      </span>
-    )
-  }
+<nav class="pagination" aria-label="文章分页">
+  <div class="pagination-links">
+    {controls.map((item) => item.disabled ? <span class="disabled" aria-disabled="true">{item.label}</span> : <a href={hrefFor(item.page)} rel={item.rel}>{item.label}</a>)}
+    <ol class="pagination-pages">
+      {pageNumbers(currentPage, totalPages).map((page) => (
+        <li>{page === 'gap' ? <span class="pagination-gap" aria-hidden="true">…</span> : <a href={hrefFor(page)} aria-current={page === currentPage ? 'page' : undefined} aria-label={`第 ${page} 页`}>{page}</a>}</li>
+      ))}
+    </ol>
+    {after.map((item) => item.disabled ? <span class="disabled" aria-disabled="true">{item.label}</span> : <a href={hrefFor(item.page)} rel={item.rel}>{item.label}</a>)}
+  </div>
+  <div class="pagination-details">
+    <p class="pagination-status">第 {currentPage} / {totalPages} 页</p>
+    <form data-static-page-jump data-index-path={indexPath} data-page-base={pageBasePath} hidden>
+      <label>跳至 <input type="number" name="page" min="1" max={totalPages} step="1" value={currentPage} required aria-label="跳到第几页" /> 页</label>
+      <button type="submit">前往</button>
+    </form>
+  </div>
 </nav>
+<script>
+  import { navigate } from 'astro:transitions/client';
+  function preparePageJumps() {
+    document.querySelectorAll<HTMLFormElement>('form[data-static-page-jump]').forEach((form) => {
+      if (form.dataset.bound) return;
+      form.dataset.bound = '1';
+      form.hidden = false;
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const input = form.elements.namedItem('page') as HTMLInputElement;
+        if (!form.reportValidity()) return;
+        const page = Number(input.value);
+        const path = page <= 1 ? `${form.dataset.indexPath?.replace(/\/$/, '')}/` : `${form.dataset.pageBase?.replace(/\/$/, '')}/${page}/`;
+        void navigate(path);
+      });
+    });
+  }
+  preparePageJumps();
+  document.addEventListener('astro:page-load', preparePageJumps);
+</script>

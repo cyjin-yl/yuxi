@@ -1,5 +1,21 @@
 import type { LyricLine, PlayerTrack } from './types';
 
+/** Read a playlist ID or a public NetEase playlist link. */
+export function publicPlaylistId(input: string): string | null {
+  const value = input.trim();
+  const validId = (id: string | null) => id !== null && /^[1-9]\d{0,19}$/.test(id) ? id : null;
+  if (/^\d+$/.test(value)) return validId(value);
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    if (!/^https?:$/.test(url.protocol) || !/(^|\.)music\.163\.com$/i.test(url.hostname)) return null;
+    const page = url.hash.startsWith('#/') ? new URL(url.hash.slice(1), url.origin) : url;
+    if (!/^\/(?:(?:m\/)?playlist|discover\/toplist)\/?$/.test(page.pathname)) return null;
+    return validId(page.searchParams.get('id'));
+  } catch {
+    return null;
+  }
+}
+
 /** Minimal shape of a NetEase song object used across the app. */
 export interface NeteaseSong {
   id: number;

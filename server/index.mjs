@@ -76,10 +76,8 @@ async function readJson(req) {
 export function createBackend(options = {}) {
   const config = {
     dbPath: options.dbPath ?? process.env.YUXI_DB ?? '/var/lib/yuxi/yuxi.sqlite',
-    keyFile: options.keyFile ?? process.env.YUXI_KEY_FILE,
     audioDir: options.audioDir ?? process.env.YUXI_AUDIO_DIR ?? '/var/lib/yuxi/audio',
     publicOrigin: options.publicOrigin ?? process.env.YUXI_ORIGIN ?? 'https://yvxi.cyjin.dev',
-    importToken: options.importToken ?? process.env.NETEASE_IMPORT_TOKEN ?? '',
     trustProxy: options.trustProxy ?? process.env.YUXI_TRUST_PROXY === '1',
     rateLimit: options.rateLimit !== false,
     now: options.now ?? Date.now,
@@ -88,8 +86,8 @@ export function createBackend(options = {}) {
   const origin = new URL(config.publicOrigin).origin;
   if (!['http:', 'https:'].includes(new URL(origin).protocol)) throw new Error('invalid_public_origin');
   const secure = origin.startsWith('https:');
-  const store = new Store({ path: config.dbPath, key: options.sessionKey, keyFile: config.keyFile, now: config.now });
-  const netease = new NetEase({ store, fetchImpl: config.fetchImpl, importToken: config.importToken, qrEncoder: options.qrEncoder });
+  const store = new Store({ path: config.dbPath, now: config.now });
+  const netease = new NetEase({ fetchImpl: config.fetchImpl, now: config.now });
   const limiter = new Limiter(config.now);
   const sweep = setInterval(() => { try { store.sweep(); } catch { process.stderr.write('yuxi: database maintenance failed\n'); } }, 60_000);
   sweep.unref();
@@ -115,7 +113,7 @@ export function createBackend(options = {}) {
       const body = method === 'POST' ? await readJson(req) : {};
       const token = tokenFrom(headers);
       let session = store.session(token);
-      const needsSession = method === 'POST' || url.pathname === '/netease/auth/qr/check';
+      const needsSession = method === 'POST' && url.pathname.startsWith('/netease/party/');
       if (!session && needsSession) {
         if (config.rateLimit && !limiter.allow(`session:${ip}`, 60, 10 * 60_000)) throw new HttpError(429, 'rate_limited');
         const created = store.newSession();
@@ -126,17 +124,16 @@ export function createBackend(options = {}) {
         const key = session?.hash ?? ip;
         if (!limiter.allow(`write:${key}`, 180)) throw new HttpError(429, 'rate_limited');
         if (url.pathname === '/netease/party/create' && (!limiter.allow(`create:${ip}`, 30, 600_000) || !limiter.allow(`create:${key}`, 10, 600_000))) throw new HttpError(429, 'rate_limited');
-        if (url.pathname === '/netease/auth/qr/create' && !limiter.allow(`qr:${ip}`, 30, 600_000)) throw new HttpError(429, 'rate_limited');
         if (url.pathname.endsWith('/chat') && !limiter.allow(`chat:${key}`, 40)) throw new HttpError(429, 'rate_limited');
       }
       const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(120_000)]);
       if (url.pathname === '/api/health' && (method === 'GET' || method === 'HEAD')) {
         store.db.prepare('SELECT 1').get();
-        result = json({ status: 'ok', service: 'yuxi', storage: 'sqlite', version: 1 });
+        result = json({ status: 'ok', service: 'yuxi', storage: 'sqlite', version: 2 });
       } else if (url.pathname === '/netease/party' || url.pathname.startsWith('/netease/party/')) {
         result = json(party({ store, path: url.pathname, method, body, session, codeGenerator: options.codeGenerator }));
       } else if (url.pathname.startsWith('/netease/')) {
-        result = await netease.handle({ url, method, body, headers, session, signal });
+        result = await netease.handle({ url, method, headers, signal });
       } else if (url.pathname.startsWith('/audio/') && (method === 'GET' || method === 'HEAD')) {
         let file;
         try { file = decodeURIComponent(url.pathname.slice('/audio/'.length)); }

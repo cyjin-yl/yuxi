@@ -52,7 +52,7 @@ export async function proxyMedia({ url, kind, headers, method, fetchImpl, signal
   const responseHeaders = new Headers();
   for (const name of FORWARD_HEADERS) if (upstream.headers.has(name)) responseHeaders.set(name, upstream.headers.get(name));
   if (kind === 'release') responseHeaders.set('content-type', 'audio/mp4');
-  // Authenticated streams may contain account-bound CDN URLs/content. Never edge-cache them.
+  // Each NetEase playback uses its current short-lived CDN URL.
   responseHeaders.set('cache-control', kind === 'release' && [200, 206].includes(upstream.status) ? 'public, max-age=3600' : 'private, no-store');
   if (method === 'HEAD' || upstream.status === 304) {
     await upstream.body?.cancel();

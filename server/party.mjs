@@ -112,13 +112,14 @@ export function party({ store, path, method, body, session, codeGenerator = newR
       if (action === 'play') {
         const item = track(body.track);
         if (!item) throw new HttpError(400, 'missing_track');
-        room.state = { mode: 'playing', track: item, startedAt: now, offset: number(body.offset), serverAt: now, hostAt: now };
+        room.state = { mode: 'playing', track: item, startedAt: now, offset: number(body.offset), serverAt: stamp, hostAt: now };
         // Advancing to a queued track consumes it. An unrelated queued add is retained.
         room.queue = room.queue.filter((queued) => queued.id !== item.id);
         room.queueAt = stamp;
       } else if (action === 'pause') {
-        const currentOffset = room.state.mode === 'playing' ? room.state.offset + Math.max(0, (now - room.state.serverAt) / 1000) : room.state.offset;
-        room.state = { ...room.state, mode: 'idle', startedAt: 0, offset: number(body.offset, currentOffset), serverAt: now, hostAt: now };
+        const playbackAt = room.state.hostAt ?? room.state.serverAt;
+        const currentOffset = room.state.mode === 'playing' ? room.state.offset + Math.max(0, (now - playbackAt) / 1000) : room.state.offset;
+        room.state = { ...room.state, mode: 'idle', startedAt: 0, offset: number(body.offset, currentOffset), serverAt: stamp, hostAt: now };
       } else if (action === 'queue') {
         const item = track(body.track);
         if (!item) throw new HttpError(400, 'missing_track');

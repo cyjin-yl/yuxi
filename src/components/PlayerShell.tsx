@@ -790,12 +790,11 @@ function PartyPanel() {
       await fn();
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : '';
-      if (message === 'party_400') setError('房间码无效。请输入 4 位字母数字码。');
+      if (message === 'party_400') setError('房间码不对，请检查后再试。');
       else if (message === 'party_404') setError('房间不存在或已经失效。');
-      else if (message === 'party_401') setError('一起听服务鉴权失败，请刷新后重试。');
-      else if (message === 'party_invalid_response') setError('服务器返回了无法识别的房间数据。');
-      else if (message.startsWith('party_')) setError(`一起听请求失败（${message.replace('party_', '')}）。`);
-      else setError(message ? `操作失败：${message}` : '操作失败，请稍后重试。');
+      else if (message === 'party_401' || message === 'party_409') setError('连接已过期，请刷新页面后再试。');
+      else if (message === 'party_403') setError('请先加入房间，再试一次。');
+      else setError('暂时连接不上房间，请稍后再试。');
     } finally {
       setBusy(false);
     }
@@ -1092,7 +1091,7 @@ export default function PlayerShell() {
       panel.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
       flipFrame.current = requestAnimationFrame(() => {
         panel.style.transition =
-          'transform 620ms cubic-bezier(.22,1,.36,1), border-radius 620ms cubic-bezier(.22,1,.36,1), background 260ms ease, box-shadow 260ms ease';
+          'transform 260ms cubic-bezier(.22,1,.36,1), border-radius 260ms cubic-bezier(.22,1,.36,1), background 160ms ease, box-shadow 160ms ease';
         panel.style.transform = 'translate(0px, 0px) scale(1, 1)';
       });
       flipTimer.current = window.setTimeout(() => {
@@ -1101,7 +1100,7 @@ export default function PlayerShell() {
         panel.style.transformOrigin = '';
         flipFrame.current = 0;
         flipTimer.current = 0;
-      }, 700);
+      }, 320);
     } else {
       panel.style.transition = '';
     }

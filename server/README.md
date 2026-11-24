@@ -1,140 +1,114 @@
 # Yuxi backend
 
-The site is built as static Astro pages. Caddy serves those pages and proxies
-`/netease/*`, `/audio/*` and `/api/health` to this service on `127.0.0.1:8787`.
-No Cloudflare Worker, KV or Durable Object binding is required by this backend.
+Caddy serves the static Astro site and forwards `/netease/*`, `/audio/*` and
+`/api/health` to this Node.js service on `127.0.0.1:8787`. The server provides
+public NetEase music browsing, audio streams and persistent listening rooms.
 
 ## Run
 
 Use Node.js 24 LTS, or Node.js 22.13 or later with the built-in `node:sqlite`
-module. Install only the small server dependency tree on the origin:
+module. The server uses Node's standard library and starts directly:
 
 ```sh
-cd server
-npm ci --omit=dev --ignore-scripts
-node index.mjs
+node server/index.mjs
 ```
 
-`qrcode` is the only production dependency. It is loaded when a visitor asks
-for a NetEase login QR code; room, health and audio routes use Node built-ins.
-The backend calls the same `https://music.163.com/api/` endpoints as the previous
-Pages Function. It does not depend on the retired Hermes host, an external
-NeteaseCloudMusicApi demo instance, or the old Python proxy.
-
-The systemd example is `../deploy/yuxi-backend.service`. Change the Node and
-release paths to match the installation. Create the unprivileged `yuxi`
-system user before enabling it. Its `StateDirectory=yuxi` owns the private
-runtime files; application releases remain read-only to that user.
+The systemd unit is `../deploy/yuxi-backend.service`. Set its Node and release
+paths for the installation and create the `yuxi` system user before enabling
+it. `StateDirectory=yuxi` gives that user a private runtime directory while
+application releases remain read-only.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `PORT` | `8787` | Listener port; host is always loopback. |
-| `YUXI_ORIGIN` | `https://yvxi.cyjin.dev` | Accepted browser Origin and secure-cookie mode. |
-| `YUXI_DB` | `/var/lib/yuxi/yuxi.sqlite` | Persistent rooms, sessions and pending QR keys. |
-| `YUXI_KEY_FILE` | Database filename plus `.key` | Private 32-byte AES-GCM key, created once with mode `0600`. The unit uses `/var/lib/yuxi/session.key`. |
-| `YUXI_AUDIO_DIR` | `/var/lib/yuxi/audio` | Optional original `.m4a` files, served without an external fetch. |
-| `YUXI_TRUST_PROXY` | Off | Set to `1` only behind the loopback reverse proxy. Rate limiting then uses its last `X-Forwarded-For` hop. |
-| `NETEASE_IMPORT_TOKEN` | Disabled | A separate random token of at least 24 characters for the optional operator cookie-import route. Store in the root-owned environment file; do not use the Life broker passphrase. |
+| `PORT` | `8787` | Loopback listener port. |
+| `YUXI_ORIGIN` | `https://yvxi.cyjin.dev` | Browser Origin and secure-cookie mode. |
+| `YUXI_DB` | `/var/lib/yuxi/yuxi.sqlite` | Rooms and anonymous browser identities. |
+| `YUXI_AUDIO_DIR` | `/var/lib/yuxi/audio` | Original `.m4a` audio files. |
+| `YUXI_TRUST_PROXY` | Off | Set to `1` behind the loopback reverse proxy so rate limits use its last `X-Forwarded-For` hop. |
 
-`GET /api/health` checks the opened SQLite connection and returns a small status
-object. It exposes neither paths, credentials, account identity nor room counts.
+`GET /api/health` checks the SQLite connection and returns the service and
+schema version.
 
-## Existing clients
+## Music
 
-The URLs and room JSON shape remain compatible with the site's player:
+The first music request obtains an anonymous visitor session directly from
+NetEase through its xeapi key exchange and registration endpoints. Each new
+session starts with a fresh device identifier. Concurrent requests share
+that registration. Credentials stay in process memory and are renewed after
+six hours or earlier if their cookie expires. Failed visitor registration
+pauses new attempts for 30 seconds. Restarting the server creates a fresh
+visitor on the next request.
 
-- `GET /netease/party`: active room list, calculated from current membership.
-- `POST /netease/party/create`: create a room. A code collision retries a unique
-  SQLite insert; it never replaces a previous room.
-- `GET /netease/party/CODE` and `POST /netease/party/CODE/{join,leave,heartbeat,play,pause,queue,reorder,chat}`.
-- `POST /netease/auth/qr/create`, `POST /netease/auth/qr/check`,
-  `GET /netease/auth/status` and `POST /netease/auth/logout`.
-- `GET /netease/{playlist,song,lyrics,comments,audio}/ID`,
-  `GET /netease/search?q=...`, `GET /netease/playlists/mine` and
-  `GET /netease/playlist/current`.
-- `GET` or `HEAD /audio/FILE.m4a`: original audio, local first and otherwise
-  proxied from the existing GitHub release.
+Visitors can search music, open public playlists and play tracks available to
+anonymous listeners. Enter a public playlist ID or link in the collection
+page to load it. These routes use the server's visitor session:
 
-Any joined member can still control shared playback. A play action consumes
-that track from the shared queue. Reordering preserves queue additions that
-arrived after the caller's snapshot. Membership expires after two minutes
-without a heartbeat; discovery uses that same rule immediately. Empty rooms
-expire one minute after an explicit last leave, or after 24 hours without
-activity. Internal maintenance operations are not public HTTP routes.
+- `GET /netease/search?q=TEXT&limit=30&offset=0`
+- `GET /netease/playlist/ID`
+- `GET /netease/song/ID`
+- `GET /netease/lyrics/ID`
+- `GET /netease/comments/ID?limit=20&offset=0`
+- `GET` or `HEAD /netease/audio/ID`
 
-Mutating requests bind the player's local actor ID to a random HttpOnly browser
-session. A different browser cannot claim an already-bound actor ID. If a user
-clears cookies but retains local storage, a `409 actor_identity_conflict`
-response tells the client to generate a new actor ID and retry once. If the
-same session already owns an ID, the response includes that `actorId` instead.
-This is a continuity check for an anonymous public room, not a user account.
+Metadata uses a bounded in-memory cache. A playlist permission response
+returns `netease_resource_unavailable` and keeps the current visitor session
+available for other public music. Audio streams support byte ranges,
+and unavailable tracks return `audio_unavailable` with the upstream track
+code. The browser displays that state and can continue to another track.
 
-## NetEase account isolation
+`GET` or `HEAD /audio/FILE.m4a` serves the original collection from the local
+audio directory. A missing local file is fetched from the existing GitHub
+audio release. Local audio and listening rooms work independently of NetEase.
 
-QR login belongs to the browser that created the QR key. The result never
-overwrites a site-wide login. The session cookie is HttpOnly, SameSite=Lax and
-Secure for the production HTTPS origin. NetEase credentials are encrypted in
-SQLite with AES-256-GCM, bound to their session hash, and are not returned to
-the browser or written to application logs. The opaque browser token is stored
-only as a SHA-256 hash in the database.
+## Listening rooms
 
-`/netease/playlists/mine` and `/netease/playlist/current` require that browser's
-login. Public metadata routes can work without login when NetEase permits it.
-Account-bound streams use `private, no-store`. Metadata caches are bounded,
-expire, and are separated by session credentials.
+- `GET /netease/party` returns `{ "rooms": [...] }` for active rooms.
+- `POST /netease/party/create` creates a room and returns its room object.
+- `GET /netease/party/CODE` returns the room object.
+- `POST /netease/party/CODE/{join,leave,heartbeat,play,pause,queue,reorder,chat}`
+  changes the room and returns the updated room object.
 
-The optional `POST /netease/auth/import` takes JSON `{ "cookie": "MUSIC_U=..." }`
-with `Authorization: Bearer ...`. It validates the credential and creates a
-login only for that request's browser session. It is disabled when no import
-token is configured. Retain the returned HttpOnly session in the operator's
-cookie jar if using an authorized CLI; do not put either credential in shell
-arguments, source files, a deployment manifest or command logs.
+The room object contains `code`, `name`, `hostId`, `state`, `queue`, `members`
+and `chat`. Any joined member can control shared playback. Playing a queued
+track consumes its queue entry; reordering keeps entries added since the
+caller's snapshot. Membership expires after two minutes without a heartbeat.
+Empty rooms expire one minute after the last explicit leave, or after
+24 hours without activity.
 
-The local room and original audio features work independently of NetEase
-availability. Upstream login, regional availability, account expiry and track
-rights remain NetEase's decisions; an unavailable track returns a specific
-error instead of claiming a successful stream.
+A random HttpOnly browser cookie binds the player's local actor ID to its
+room identity. SQLite stores a hash of the browser token. If cookies were
+cleared while local storage remains, `409 actor_identity_conflict` tells the
+client to choose a new actor ID and retry once. When the current browser
+session already owns an ID, the response includes that `actorId` for reuse.
 
-## Persistence and backups
+## SQLite runtime data
 
-Each room mutation commits a SQLite transaction before returning HTTP success.
-SQLite uses WAL, `synchronous=FULL` and a bounded busy timeout. The room itself
-is the discovery authority, so there is no separate eventually consistent
-room index. Sessions and their encrypted credentials survive restarts.
+Each room mutation commits before the HTTP response succeeds. SQLite uses
+WAL, `synchronous=FULL` and a bounded busy timeout. Rooms, queues, chat and
+browser identity survive a process restart. The active room list is computed
+from room membership.
 
-Back up **both the database and its matching key file**, plus any irreplaceable
-original audio. The key is generated once and must not be regenerated during
-normal deployments. A database without that key cannot recover account cookies.
-Database rows and anonymous room state can still be inspected without revealing
-those cookies. Keep backups private.
+Deploy the site and server together. The first start with schema version 2
+retains rooms and browser identities, removes the account-cookie column and
+pending login rows, and truncates the migration journal. Runtime data lives
+under `/var/lib/yuxi`, separately from application releases and the original
+audio files. Release management is described in the
+[origin maintenance guide](../deploy/README.md).
 
-The supplied `../deploy/backup-sqlite.py` uses Python's standard-library online
-backup API without stopping the service. It writes a checked database and its
-matching key into a private recovery set, then atomically publishes that set.
-The `yuxi-backup.service` and daily timer run as root and retain 14 completed
-sets by default (7 is also supported). Do not copy just the main `.sqlite` file
-while WAL writes are active. Installation, release switching and deliberate
-restore steps are in [the origin maintenance guide](../deploy/README.md).
+## Development
 
-Roll back application code separately from data. The service refuses an
-unknown newer database schema version. Replacing a release must not replace
-`/var/lib/yuxi`, its key or local media. The current schema is version 1.
-
-## Checks
+Run the HTTP, SQLite migration and streaming checks from the repository root:
 
 ```sh
-node --test tests/backend.test.mjs
+node --test tests/backend*.test.mjs
 ```
 
-Run this from the repository root. Tests use real HTTP listeners and temporary
-SQLite databases. They exercise restart persistence, concurrent mutations,
-collision handling, actor and QR ownership, login isolation, body limits,
-expiry, request boundaries and audio byte ranges. NetEase replies are fixtures
-in those tests; deployment acceptance also needs live source and public-domain
-requests. A successful fixture login does not establish that a real account is
-currently logged in.
+The Node.js documentation describes the
+[SQLite API](https://nodejs.org/docs/latest-v24.x/api/sqlite.html),
+[HTTP server](https://nodejs.org/docs/latest-v24.x/api/http.html) and
+[cryptographic primitives](https://nodejs.org/docs/latest-v24.x/api/crypto.html).
 
-The SQLite API is documented at
-<https://nodejs.org/docs/latest-v24.x/api/sqlite.html>. The HTTP implementation
-uses Node's standard server and stream APIs:
-<https://nodejs.org/docs/latest-v24.x/api/http.html>.
+The visitor wire format follows the maintained API implementation's
+[anonymous registration](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/23d9e9d7ee5dfeccfc3b15916ccd9da1f76d3ea4/module/register_anonimous.js),
+[key exchange](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/23d9e9d7ee5dfeccfc3b15916ccd9da1f76d3ea4/module/register_xeapikey.js)
+and [xeapi envelope](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced/blob/23d9e9d7ee5dfeccfc3b15916ccd9da1f76d3ea4/util/crypto.js).

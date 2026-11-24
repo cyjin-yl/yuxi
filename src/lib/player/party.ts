@@ -18,9 +18,9 @@ export interface PartyRoom {
     track: PartyTrack | null;
     startedAt: number;
     offset: number;
-    /** Server wall-clock when this state was written (ms). */
+    /** Monotonic server state timestamp (ms). */
     serverAt: number;
-    /** Host device wall-clock when this state was written (ms). */
+    /** Server playback clock anchor (ms). */
     hostAt: number;
   };
   queue: PartyTrack[];
@@ -46,8 +46,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 function normalizeRoom(value: unknown): PartyRoom {
-  const outer = asRecord(value);
-  const raw = asRecord(outer?.room) ?? outer;
+  const raw = asRecord(value);
   if (!raw || typeof raw.code !== 'string') throw new Error('party_invalid_response');
   const state = asRecord(raw.state);
   const mode = state?.mode === 'playing' ? 'playing' : 'idle';
@@ -66,7 +65,7 @@ function normalizeRoom(value: unknown): PartyRoom {
       hostAt: typeof state?.hostAt === 'number' ? state.hostAt : 0,
     },
     queue: Array.isArray(raw.queue) ? raw.queue as PartyTrack[] : [],
-    queueAt: typeof raw.queueAt === 'number' ? raw.queueAt : (typeof raw.updatedAt === 'number' ? raw.updatedAt : 0),
+    queueAt: typeof raw.queueAt === 'number' ? raw.queueAt : 0,
     members: Array.isArray(raw.members) ? raw.members as PartyMember[] : [],
     chat: Array.isArray(raw.chat) ? raw.chat as PartyChat[] : [],
   };
@@ -113,8 +112,6 @@ async function post(path: string, body: Record<string, unknown> = {}): Promise<P
 }
 export async function createRoom(name: string, initial?: PartyInit): Promise<PartyRoom> {
   const hostAt = Date.now();
-  // Always send a non-empty roomName so the worker never falls back to the
-  // member nickname field (`name`) for the room title.
   const room = await post('/create', {
     roomName: (name || '一起听').slice(0, 60),
     track: initial?.track ?? null,
@@ -172,9 +169,7 @@ export async function fetchRoom(code: string): Promise<PartyRoom> {
 }
 
 export async function listRooms(): Promise<{ code: string; name: string; members: number; host: boolean }[]> {
-  // Pass our id so the server can flag rooms we host (`host: true`) in the
-  // discovery list. Without it every row renders without the 房主 marker.
-  const res = await fetch(`${BASE}?id=${encodeURIComponent(partyId())}`);
+  const res = await fetch(BASE);
   if (!res.ok) throw new Error(`party_${res.status}`);
   const body = asRecord(await res.json());
   if (!Array.isArray(body?.rooms)) return [];
@@ -196,7 +191,7 @@ export async function reorderQueue(code: string, order: string[]): Promise<Party
 
 /**
  * Position (seconds) the room is at right now.
- * Prefers hostAt so guests can compensate for network delay:
+ * Uses the server playback anchor so guests compensate for network delay:
  * pos = offset + (now - hostAt)/1000 when playing.
  */
 export function roomPosition(room: PartyRoom, nowMs: number = Date.now()): number {

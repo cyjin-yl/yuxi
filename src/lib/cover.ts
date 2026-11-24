@@ -47,16 +47,13 @@ export function hasThumbnail(url: string | undefined | null): url is string {
  * into static HTML so the page paints immediately and only the audio load
  * needs the network at runtime.
  *
- * During `astro build` in Node we don't have a base URL for relative paths
- * like `/netease/song/<id>`. Until we have a local SSR adapter, route the
- * build-time prefetch through the live production site (same Worker, same
- * auth). Override with `YUXI_BUILD_BASE_URL` if needed.
+ * Prefetch is opt-in: YUXI_BUILD_BASE_URL selects the music API origin.
+ * With no origin configured, widgets use their supplied title and cover.
  *
  * Returns null on any error so callers can degrade gracefully.
  */
 const memCache = new Map<string, unknown>();
-// Production builds are deterministic and do not depend on an authenticated
-// music service. An operator can explicitly opt in to a bounded prefetch.
+// Production builds do not need a live music service.
 function buildBase(): string | null {
   const value = typeof process !== 'undefined' ? process.env.YUXI_BUILD_BASE_URL : undefined;
   return value ? value.replace(/\/$/, '') : null;

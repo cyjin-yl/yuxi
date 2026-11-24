@@ -1,13 +1,22 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, createPublicKey, diffieHellman, generateKeyPairSync, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import { HttpError } from './party.mjs';
 import { proxyMedia } from './media.mjs';
 
 const API = 'https://music.163.com';
-const ID = /^[1-9][0-9]{0,19}$/;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36';
-const PROFILE_TTL = 300_000;
-const SECRET_FIELDS = /^(?:cookie|cookies|token|access_?token|refresh_?token|MUSIC_U|password)$/i;
+const VISITOR_UA = 'NeteaseMusic/9.5.61.260802021928(9005061);Dalvik/2.1.0 (Linux; U; Android 12; HBN-AL00 Build/cd737a2.0)';
+const VISITOR_TTL = 6 * 3600_000;
+const RETRY_DELAY = 30_000;
+const MAX_RESPONSE_BYTES = 3 * 1024 * 1024;
+// Public wire-format constants used by the NetEase xeapi visitor protocol.
+const XEAPI_KEY = Buffer.from('ab1d5a430f6bb04a3f01e81ddd72bd916d5ce591248ac128714806d7f8fb1b84', 'hex');
+const XEAPI_SIGNING_KEY = 'mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==';
+const XEAPI_RESPONSE_KEY = Buffer.from('e82ckenh8dichen8');
+const X25519_PREFIX = Buffer.from('302a300506032b656e032100', 'hex');
+const SECRET_FIELDS = /^(?:cookie|cookies|token|access_?token|refresh_?token|MUSIC_[AU]|__csrf|password)$/i;
 const record = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+const form = (values) => ({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(values) });
 
 export const json = (body, status = 200, cache = 'no-store') => new Response(JSON.stringify(body), {
   status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cache },
@@ -19,30 +28,126 @@ function sanitized(value) {
   return value;
 }
 
-function musicCookie(value) {
-  if (typeof value !== 'string' || value.length > 16384 || /[\r\n]/.test(value)) return '';
-  const match = /(?:^|[;,]\s*)MUSIC_U=([^;\s,]+)/.exec(value);
-  return match ? `MUSIC_U=${match[1]}` : '';
+async function responseBytes(response) {
+  const reader = response.body?.getReader();
+  const chunks = [];
+  let size = 0;
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > MAX_RESPONSE_BYTES) { await reader.cancel(); throw new HttpError(502, 'netease_response_too_large'); }
+      chunks.push(value);
+    }
+  }
+  return Buffer.concat(chunks);
 }
 
-function fingerprint(cookie) {
-  if (!cookie) return '';
-  const id = createHash('sha256').update(cookie).digest('hex').slice(0, 32);
-  return `${cookie}; __remember_me=true; _ntes_nuid=${id}; WEVNSM=1.0.0; os=pc; deviceId=yuxi-${id}; appver=3.1.17.204416; channel=netease`;
+function ecb(key, input, decrypt = false) {
+  const cipher = (decrypt ? createDecipheriv : createCipheriv)(`aes-${key.length * 8}-ecb`, key, Buffer.alloc(0));
+  return Buffer.concat([cipher.update(input), cipher.final()]);
+}
+
+function encodedUsername(deviceId) {
+  const xorKey = '3go8&$8*3*3h0k(2)2';
+  const xored = Buffer.from(deviceId, 'ascii').map((byte, index) => byte ^ xorKey.charCodeAt(index % xorKey.length));
+  const digest = createHash('md5').update(xored).digest('base64');
+  return Buffer.from(`${deviceId} ${digest}`).toString('base64');
+}
+
+function visitorPacket(data, keyState) {
+  const dynamic = randomBytes(16);
+  const plaintext = Buffer.from(JSON.stringify({ content: new URLSearchParams(data).toString(), queryString: 'e_r=true' }));
+  const inner = ecb(XEAPI_KEY, plaintext);
+  const mask = randomBytes(16);
+  const xored = inner.map((value, index) => value ^ mask[index % 16]);
+  const rotate = (mask[0] & 15) % xored.length;
+  const C = ecb(dynamic, Buffer.concat([mask, xored.subarray(rotate), xored.subarray(0, rotate)]));
+  const peer = createPublicKey({ key: Buffer.concat([X25519_PREFIX, Buffer.from(keyState.publicKey, 'base64')]), format: 'der', type: 'spki' });
+  const pair = generateKeyPairSync('x25519');
+  const ephemeral = Buffer.from(pair.publicKey.export({ format: 'der', type: 'spki' })).subarray(-32);
+  const shared = diffieHellman({ privateKey: pair.privateKey, publicKey: peer });
+  const prk = createHmac('sha256', Buffer.alloc(32)).update(shared).digest();
+  const derived = createHmac('sha256', prk).update(Buffer.concat([ephemeral, Buffer.from([1])])).digest().subarray(0, 16);
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-128-gcm', derived, iv);
+  const sealed = Buffer.concat([cipher.update(`${dynamic.toString('base64')}|android|${keyState.sk}`), cipher.final()]);
+  const S = Buffer.concat([ephemeral, iv, sealed, cipher.getAuthTag()]);
+  const R = ecb(XEAPI_KEY, Buffer.from(`${keyState.version}|`));
+  return { C: C.toString('base64url'), S: S.toString('base64'), R: R.toString('base64') };
+}
+
+function registrationBody(bytes) {
+  try { return JSON.parse(bytes.toString()); } catch { /* Successful app responses use the encrypted format. */ }
+  let plain = ecb(XEAPI_RESPONSE_KEY, bytes, true);
+  if (plain[0] === 0x1f && plain[1] === 0x8b) plain = gunzipSync(plain, { maxOutputLength: MAX_RESPONSE_BYTES });
+  return JSON.parse(plain.toString());
+}
+
+const visitorSignature = (timestamp, nonce) => createHmac('sha256', XEAPI_SIGNING_KEY).update(String(timestamp) + nonce).digest('base64');
+
+async function registerVisitor(fetchImpl, now) {
+  const request = async (url, values, headers) => {
+    const response = await fetchImpl(url, {
+      ...form(values), headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8', 'user-agent': VISITOR_UA, ...headers },
+      redirect: 'error', signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) { await response.body?.cancel(); throw new HttpError(503, 'netease_visitor_unavailable'); }
+    return { headers: response.headers, bytes: await responseBytes(response) };
+  };
+  const deviceId = randomBytes(26).toString('hex').toUpperCase();
+  const nonce = Array.from({ length: 16 }, () => String(randomInt(10))).join('');
+  const timestamp = String(now());
+  const keyReply = await request('https://interface.music.163.com/api/bsr/sk/get', {
+    appVersion: '9.5.61', currentKeyVersion: '', deviceId, nonce, os: 'android', requestType: 'active',
+    signature: visitorSignature(timestamp, nonce), t1: '', t2: '', timestamp, uid: '',
+  }, { cookie: `deviceId=${deviceId}` });
+  const envelope = JSON.parse(keyReply.bytes.toString());
+  const data = record(envelope?.data);
+  if (envelope?.code !== 200 || typeof data?.encryptedData !== 'string' || !['string', 'number'].includes(typeof data.timestamp)) throw new Error('invalid_visitor_key');
+  const expected = Buffer.from(visitorSignature(data.timestamp, nonce));
+  const supplied = Buffer.from(String(data.signature ?? ''));
+  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) throw new Error('invalid_visitor_key_signature');
+  const key = JSON.parse(ecb(XEAPI_KEY, Buffer.from(data.encryptedData, 'base64'), true).toString());
+  if (typeof key?.publicKey !== 'string' || Buffer.from(key.publicKey, 'base64').length !== 32 || typeof key.sk !== 'string' || !key.sk || key.sk.length > 16384 || !['string', 'number'].includes(typeof key.version) || !String(key.version) || String(key.version).length > 128) throw new Error('invalid_visitor_key');
+
+  const registeredAt = now();
+  const buildver = String(Math.floor(registeredAt / 1000));
+  const nuid = randomBytes(32).toString('hex');
+  const fingerprint = `__remember_me=true; ntes_kaola_ad=1; _ntes_nuid=${nuid}; _ntes_nnid=${nuid},${registeredAt}; WNMCID=${randomBytes(3).toString('hex')}.${registeredAt}.01.0; WEVNSM=1.0.0; os=android; osver=16; appver=9.1.65; channel=netease; deviceId=${deviceId}; sDeviceId=${deviceId}; buildver=${buildver}`;
+  const result = await request('https://interface3.music.163.com/xeapi/register/anonimous', visitorPacket({ username: encodedUsername(deviceId) }, key), {
+    cookie: fingerprint, 'X-Client-Enc-State': 'ENCRYPTED', 'x-aeapi': 'true',
+    'x-deviceid': deviceId, 'x-os': 'android', 'x-osver': '16', 'x-appver': '9.1.65', 'x-sdeviceid': deviceId, 'x-buildver': buildver,
+  });
+  if (registrationBody(result.bytes)?.code !== 200) throw new HttpError(503, 'netease_visitor_unavailable');
+  return { headers: result.headers, fingerprint };
+}
+
+function visitorCookies(headers, now) {
+  const cookies = new Map();
+  let expires = now + VISITOR_TTL;
+  for (const header of headers.getSetCookie()) {
+    const parts = header.split(';').map((part) => part.trim());
+    const match = /^(MUSIC_A|__csrf)=([^\s;,]{1,4096})$/.exec(parts[0]);
+    if (!match || /["\\\x00-\x20\x7f-\xff]/.test(match[2])) continue;
+    cookies.set(match[1], match[2]);
+    if (match[1] !== 'MUSIC_A') continue;
+    const age = parts.find((part) => /^max-age=/i.test(part));
+    const until = parts.find((part) => /^expires=/i.test(part));
+    const expiry = age ? now + Number(age.slice(8)) * 1000 : until ? Date.parse(until.slice(8)) : NaN;
+    if (Number.isFinite(expiry)) expires = Math.min(expires, now + (expiry - now) * 0.9);
+  }
+  if (!cookies.has('MUSIC_A') || expires <= now) throw new HttpError(503, 'netease_visitor_unavailable');
+  return { cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '), expires };
 }
 
 function normalizePlaylist(value) {
   const playlist = record(value?.playlist);
   if (!Array.isArray(playlist?.trackIds) || !Array.isArray(playlist.tracks)) return value;
   const byId = new Map(playlist.tracks.map((item) => [String(item.id), item]));
-  const ordered = playlist.trackIds.map((item) => byId.get(String(item.id))).filter(Boolean);
-  playlist.tracks = ordered;
+  playlist.tracks = playlist.trackIds.map((item) => byId.get(String(item.id))).filter(Boolean);
   return value;
-}
-
-function profile(value) {
-  const user = value?.profile ?? value?.data?.profile;
-  return value?.code === 200 && Number.isSafeInteger(user?.userId) ? { userId: user.userId, nickname: typeof user.nickname === 'string' ? user.nickname.slice(0, 100) : '' } : null;
 }
 
 function boundedInt(value, fallback, max) {
@@ -53,12 +158,12 @@ function boundedInt(value, fallback, max) {
 }
 
 export class NetEase {
-  constructor({ store, fetchImpl = fetch, importToken = '', qrEncoder, signalFor }) {
-    this.store = store;
+  constructor({ fetchImpl = fetch, now = Date.now } = {}) {
     this.fetchImpl = fetchImpl;
-    this.importToken = importToken;
-    this.qrEncoder = qrEncoder ?? (async (url) => (await import('qrcode')).default.toString(url, { type: 'svg', width: 320, margin: 1 }));
-    this.signalFor = signalFor;
+    this.now = now;
+    this.visitor = null;
+    this.visitorPending = null;
+    this.retryAfter = 0;
     this.cache = new Map();
     this.cacheBytes = 0;
   }
@@ -67,144 +172,89 @@ export class NetEase {
     const headers = new Headers(init.headers);
     headers.set('user-agent', UA);
     headers.set('referer', `${API}/`);
-    if (cookie) headers.set('cookie', fingerprint(cookie));
+    headers.set('cookie', cookie);
     const response = await this.fetchImpl(`${API}${path}`, { ...init, headers, redirect: 'error', signal: AbortSignal.timeout(15_000) });
-    if (!response.ok) { await response.body?.cancel(); throw new HttpError(502, 'netease_upstream_failure'); }
-    const reader = response.body?.getReader();
-    const chunks = [];
-    let size = 0;
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.length;
-        if (size > 3 * 1024 * 1024) { await reader.cancel(); throw new HttpError(502, 'netease_response_too_large'); }
-        chunks.push(value);
-      }
+    if (!response.ok) {
+      await response.body?.cancel();
+      if (response.status === 401) return { body: { code: 401 }, headers: response.headers };
+      throw new HttpError(502, 'netease_upstream_failure');
     }
+    const bytes = await responseBytes(response);
     let body;
-    try { body = JSON.parse(Buffer.concat(chunks).toString()); }
+    try { body = JSON.parse(bytes.toString()); }
     catch { throw new HttpError(502, 'netease_invalid_response'); }
     return { body, headers: response.headers };
   }
 
-  async cached(path, cookie, ttl, init = {}) {
-    const key = createHash('sha256').update(`${cookie}\n${path}\n${String(init.body ?? '')}`).digest('hex');
+  async getVisitor() {
+    const now = this.now();
+    if (this.visitor && this.visitor.expires > now) return this.visitor;
+    if (this.visitorPending) return this.visitorPending;
+    if (now < this.retryAfter) throw new HttpError(503, 'netease_visitor_unavailable');
+    this.visitor = null;
+    this.visitorPending = (async () => {
+      try {
+        const result = await registerVisitor(this.fetchImpl, this.now);
+        const { cookie, expires } = visitorCookies(result.headers, this.now());
+        this.visitor = { cookie: `${cookie}; ${result.fingerprint}`, expires };
+        this.retryAfter = 0;
+        return this.visitor;
+      } catch {
+        this.retryAfter = this.now() + RETRY_DELAY;
+        throw new HttpError(503, 'netease_visitor_unavailable');
+      } finally {
+        this.visitorPending = null;
+      }
+    })();
+    return this.visitorPending;
+  }
+
+  async cached(path, ttl, init = {}) {
+    const key = `${path}\n${String(init.body ?? '')}`;
     const cached = this.cache.get(key);
-    if (cached && cached.expires > this.store.now()) return JSON.parse(cached.data);
+    if (cached && cached.expires > this.now()) return JSON.parse(cached.data);
     if (cached) { this.cache.delete(key); this.cacheBytes -= cached.bytes; }
-    const { body } = await this.upstream(path, cookie, init);
-    const data = JSON.stringify(sanitized(body));
+    const visitor = await this.getVisitor();
+    const result = await this.upstream(path, visitor.cookie, init);
+    if ([301, 401].includes(result.body?.code)) {
+      throw new HttpError(403, 'netease_resource_unavailable');
+    }
+    const data = JSON.stringify(sanitized(result.body));
+    if (result.body?.code !== undefined && result.body.code !== 200) return JSON.parse(data);
     const bytes = Buffer.byteLength(data);
     while (this.cache.size >= 256 || (this.cacheBytes + bytes > 32 * 1024 * 1024 && this.cache.size)) {
       const oldest = this.cache.keys().next().value;
       this.cacheBytes -= this.cache.get(oldest).bytes;
       this.cache.delete(oldest);
     }
-    this.cache.set(key, { data, bytes, expires: this.store.now() + ttl });
+    const previous = this.cache.get(key);
+    if (previous) this.cacheBytes -= previous.bytes;
+    this.cache.set(key, { data, bytes, expires: this.now() + ttl });
     this.cacheBytes += bytes;
     return JSON.parse(data);
   }
 
-  async validate(cookie) {
-    if (!cookie) return null;
-    return profile(await this.cached('/api/nuser/account/get', cookie, PROFILE_TTL));
-  }
-
-  authorized(header) {
-    if (!this.importToken || this.importToken.length < 24 || !header) return false;
-    const wanted = Buffer.from(`Bearer ${this.importToken}`);
-    const got = Buffer.from(header);
-    return wanted.length === got.length && timingSafeEqual(wanted, got);
-  }
-
-  async handle({ url, method, body, headers, session, signal }) {
+  async handle({ url, method, headers, signal }) {
     const path = url.pathname;
-    const form = (values) => ({ method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(values) });
-    if (path === '/netease/auth/import') {
-      if (method !== 'POST') throw new HttpError(405, 'method_not_allowed');
-      if (!this.authorized(headers.get('authorization'))) throw new HttpError(401, 'unauthorized');
-      const cookie = musicCookie(body.cookie);
-      const account = await this.validate(cookie);
-      if (!account) throw new HttpError(400, 'invalid_netease_cookie');
-      this.store.saveCookie(session, cookie);
-      return json({ authenticated: true, ...account, scope: 'browser' });
-    }
-    if (path === '/netease/auth/logout') {
-      if (method !== 'POST') throw new HttpError(405, 'method_not_allowed');
-      this.store.clearCookie(session);
-      return json({ authenticated: false, scope: 'browser' });
-    }
-    if (path === '/netease/auth/qr/create') {
-      if (method !== 'POST') throw new HttpError(405, 'method_not_allowed');
-      const { body: result } = await this.upstream('/api/login/qrcode/unikey', '', form({ type: '3' }));
-      const key = result.unikey ?? result.data?.unikey;
-      if (result.code !== 200 || typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(key)) throw new HttpError(502, 'qr_key_failed');
-      const qrUrl = `${API}/login?codekey=${encodeURIComponent(key)}`;
-      const svg = await this.qrEncoder(qrUrl);
-      // One live QR key per browser; a refresh invalidates that browser's old key only.
-      this.store.transaction(() => {
-        this.store.db.prepare('DELETE FROM qr_keys WHERE session_hash = ?').run(session.hash);
-        this.store.db.prepare('INSERT INTO qr_keys(key, session_hash, expires_at) VALUES (?, ?, ?)').run(key, session.hash, this.store.now() + 600_000);
-      });
-      return json({ key, qrUrl, qrImg: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` });
-    }
-    if (path === '/netease/auth/qr/check') {
-      if (method !== 'POST' && method !== 'GET') throw new HttpError(405, 'method_not_allowed');
-      const key = method === 'POST' ? body.key : url.searchParams.get('key');
-      if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(key)) throw new HttpError(400, 'missing_qr_key');
-      const row = this.store.db.prepare('SELECT key FROM qr_keys WHERE key = ? AND session_hash = ? AND expires_at > ?').get(key, session.hash, this.store.now());
-      if (!row) throw new HttpError(403, 'qr_session_mismatch');
-      const { body: result, headers: upstreamHeaders } = await this.upstream('/api/login/qrcode/client/login', '', form({ key, type: '3' }));
-      const code = Number.isInteger(result.code) ? result.code : 0;
-      if (code !== 803) return json({ code, message: typeof result.message === 'string' ? result.message.slice(0, 200) : '' });
-      const candidates = [result.cookie, ...(upstreamHeaders.getSetCookie?.() ?? []), upstreamHeaders.get('set-cookie')];
-      const cookie = candidates.map(musicCookie).find(Boolean);
-      if (!cookie) throw new HttpError(502, 'login_cookie_missing');
-      const account = await this.validate(cookie);
-      if (!account) throw new HttpError(502, 'login_cookie_invalid');
-      this.store.transaction(() => {
-        this.store.saveCookie(session, cookie);
-        this.store.db.prepare('DELETE FROM qr_keys WHERE key = ? AND session_hash = ?').run(key, session.hash);
-      });
-      return json({ code, authenticated: true, profile: account, scope: 'browser' });
-    }
+    const match = /^\/netease\/(playlist|song|lyrics|comments|audio)\/([1-9][0-9]{0,19})$/.exec(path);
+    if (path !== '/netease/search' && !match) throw new HttpError(404, 'not_found');
     if (method !== 'GET' && method !== 'HEAD') throw new HttpError(405, 'method_not_allowed');
-    const cookie = this.store.cookie(session);
-    if (path === '/netease/auth/status') {
-      const account = await this.validate(cookie);
-      return json({ authenticated: Boolean(account), profile: account, scope: 'browser' });
-    }
-    if (path === '/netease/playlists/mine' || path === '/netease/playlist/current') {
-      const account = await this.validate(cookie);
-      if (!account) throw new HttpError(401, 'netease_auth_required');
-      const data = await this.cached(`/api/user/playlist?uid=${account.userId}&limit=1000&offset=0`, cookie, 300_000);
-      const list = Array.isArray(data.playlist) ? data.playlist : [];
-      if (path.endsWith('/mine')) return json({ playlists: list.filter((item) => Number.isSafeInteger(item.id) && typeof item.name === 'string').map((item) => ({
-        id: String(item.id), name: item.name, coverUrl: typeof item.coverImgUrl === 'string' ? item.coverImgUrl : null, trackCount: Number.isFinite(item.trackCount) ? item.trackCount : 0,
-      })) }, 200, 'private, max-age=300');
-      const current = list.find((item) => typeof item.name === 'string' && item.name.startsWith('English Essentials 40 —'));
-      if (!current || !ID.test(String(current.id))) throw new HttpError(404, 'english_playlist_not_found');
-      return json(normalizePlaylist(await this.cached(`/api/v6/playlist/detail?id=${current.id}&n=1000&s=0`, cookie, 300_000)), 200, 'private, max-age=300');
-    }
     if (path === '/netease/search') {
       const query = (url.searchParams.get('q') ?? '').trim();
       if (!query || query.length > 200) throw new HttpError(400, 'invalid_query');
       const params = new URLSearchParams({ s: query, type: '1', limit: String(boundedInt(url.searchParams.get('limit'), 30, 100)), offset: String(boundedInt(url.searchParams.get('offset'), 0, 10000)), total: 'true' });
-      return json(await this.cached(`/api/cloudsearch/pc?${params}`, cookie, 60_000), 200, 'private, max-age=60');
+      return json(await this.cached(`/api/cloudsearch/pc?${params}`, 60_000), 200, 'public, max-age=60');
     }
-    const match = /^\/netease\/(playlist|song|lyrics|comments|audio)\/([1-9][0-9]{0,19})$/.exec(path);
-    if (!match) throw new HttpError(404, 'not_found');
     const [, kind, id] = match;
-    if (kind === 'playlist') return json(normalizePlaylist(await this.cached(`/api/v6/playlist/detail?id=${id}&n=1000&s=0`, cookie, 300_000)), 200, 'private, max-age=300');
-    if (kind === 'song') return json(await this.cached('/api/v3/song/detail', cookie, 3600_000, form({ c: `[{"id":${id}}]` })), 200, 'private, max-age=3600');
-    if (kind === 'lyrics') return json(await this.cached(`/api/song/lyric/v1?id=${id}&cp=false&tv=0&lv=0&rv=0&kv=0&yv=0&ytv=0&yrv=0`, cookie, 3600_000), 200, 'private, max-age=3600');
+    if (kind === 'playlist') return json(normalizePlaylist(await this.cached(`/api/v6/playlist/detail?id=${id}&n=1000&s=0`, 300_000)), 200, 'public, max-age=300');
+    if (kind === 'song') return json(await this.cached('/api/v3/song/detail', 3600_000, form({ c: `[{"id":${id}}]` })), 200, 'public, max-age=3600');
+    if (kind === 'lyrics') return json(await this.cached(`/api/song/lyric/v1?id=${id}&cp=false&tv=0&lv=0&rv=0&kv=0&yv=0&ytv=0&yrv=0`, 3600_000), 200, 'public, max-age=3600');
     if (kind === 'comments') {
       const limit = boundedInt(url.searchParams.get('limit'), 20, 100);
       const offset = boundedInt(url.searchParams.get('offset'), 0, 10000);
-      return json(await this.cached(`/api/v1/resource/comments/R_SO_4_${id}`, cookie, 300_000, form({ rid: id, limit: String(limit), offset: String(offset), beforeTime: '0' })), 200, 'private, max-age=300');
+      return json(await this.cached(`/api/v1/resource/comments/R_SO_4_${id}`, 300_000, form({ rid: id, limit: String(limit), offset: String(offset), beforeTime: '0' })), 200, 'public, max-age=300');
     }
-    const data = await this.cached('/api/song/enhance/player/url/v1', cookie, 60_000, form({ ids: `[${id}]`, level: 'standard', encodeType: 'aac' }));
+    const data = await this.cached('/api/song/enhance/player/url/v1', 60_000, form({ ids: `[${id}]`, level: 'standard', encodeType: 'aac' }));
     const media = data?.data?.[0];
     if (!media || typeof media.url !== 'string') return json({ error: 'audio_unavailable', code: Number.isInteger(media?.code) ? media.code : null }, 451);
     return proxyMedia({ url: media.url, kind: 'netease', headers, method, fetchImpl: this.fetchImpl, signal });
