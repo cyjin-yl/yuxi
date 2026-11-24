@@ -1,0 +1,282 @@
+[
+  {
+    "id": "classic-01",
+    "number": 1,
+    "title": "Yesterday Once More",
+    "artist": "Carpenters",
+    "file": "01_Yesterday_Once_More.m4a"
+  },
+  {
+    "id": "classic-02",
+    "number": 2,
+    "title": "Hey Jude",
+    "artist": "The Beatles",
+    "file": "02_Hey_Jude.m4a"
+  },
+  {
+    "id": "classic-03",
+    "number": 3,
+    "title": "My Heart Will Go On",
+    "artist": "Céline Dion",
+    "file": "03_My_Heart_Will_Go_On.m4a"
+  },
+  {
+    "id": "classic-04",
+    "number": 4,
+    "title": "Auld Lang Syne",
+    "artist": "Colbie Caillat",
+    "file": "04_Auld_Lang_Syne.m4a"
+  },
+  {
+    "id": "classic-05",
+    "number": 5,
+    "title": "Right Here Waiting",
+    "artist": "Richard Marx",
+    "file": "05_Right_Here_Waiting.m4a"
+  },
+  {
+    "id": "classic-06",
+    "number": 6,
+    "title": "Do-Re-Mi",
+    "artist": "Mother Abbess",
+    "file": "06_Do_Re_Mi.m4a"
+  },
+  {
+    "id": "classic-07",
+    "number": 7,
+    "title": "Say You Say Me",
+    "artist": "Lionel Richie",
+    "file": "07_Say_You_Say_Me.m4a"
+  },
+  {
+    "id": "classic-08",
+    "number": 8,
+    "title": "Red River Valley",
+    "artist": "Michael Martin Murphey",
+    "file": "08_Red_River_Valley.m4a"
+  },
+  {
+    "id": "classic-09",
+    "number": 9,
+    "title": "Take Me to Your Heart",
+    "artist": "Michael Learns To Rock",
+    "file": "09_Take_Me_to_Your_Heart.m4a"
+  },
+  {
+    "id": "classic-10",
+    "number": 10,
+    "title": "Turkey in the Straw",
+    "artist": "Mickey Mouse, Goofy, Larry Groce",
+    "file": "10_Turkey_in_the_Straw.m4a"
+  },
+  {
+    "id": "classic-11",
+    "number": 11,
+    "title": "Seasons in the Sun",
+    "artist": "Terry Jacks",
+    "file": "11_Seasons_in_the_Sun.m4a"
+  },
+  {
+    "id": "classic-12",
+    "number": 12,
+    "title": "Big Big World",
+    "artist": "Emilia",
+    "file": "12_Big_Big_World.m4a"
+  },
+  {
+    "id": "classic-13",
+    "number": 13,
+    "title": "Scarborough Fair",
+    "artist": "Simon & Garfunkel",
+    "file": "13_Scarborough_Fair.m4a"
+  },
+  {
+    "id": "classic-14",
+    "number": 14,
+    "title": "Take Me Home Country Roads",
+    "artist": "John Denver",
+    "file": "14_Take_Me_Home_Country_Roads.m4a"
+  },
+  {
+    "id": "classic-15",
+    "number": 15,
+    "title": "Lemon Tree",
+    "artist": "Fool's Garden",
+    "file": "15_Lemon_Tree.m4a"
+  },
+  {
+    "id": "classic-16",
+    "number": 16,
+    "title": "Happy Days Are Here Again",
+    "artist": "Ben Selvin and His Orchestra",
+    "file": "16_Happy_Days_Are_Here_Again.m4a"
+  },
+  {
+    "id": "classic-17",
+    "number": 17,
+    "title": "You Raise Me Up",
+    "artist": "Secret Garden",
+    "file": "17_You_Raise_Me_Up.m4a"
+  },
+  {
+    "id": "classic-18",
+    "number": 18,
+    "title": "My Love",
+    "artist": "Westlife",
+    "file": "18_My_Love.m4a"
+  },
+  {
+    "id": "classic-19",
+    "number": 19,
+    "title": "Mockingbird Hill",
+    "artist": "Ray Lynam",
+    "file": "19_Mockingbird_Hill.m4a"
+  },
+  {
+    "id": "classic-20",
+    "number": 20,
+    "title": "Days of My Past",
+    "artist": "贵族乐团",
+    "file": "20_Days_of_My_Past.m4a"
+  },
+  {
+    "id": "classic-21",
+    "number": 21,
+    "title": "Can You Feel the Love Tonight",
+    "artist": "Elton John",
+    "file": "21_Can_You_Feel_the_Love_Tonight.m4a"
+  },
+  {
+    "id": "classic-22",
+    "number": 22,
+    "title": "Rhythm of the Rain",
+    "artist": "The Cascades",
+    "file": "22_Rhythm_of_the_Rain.m4a"
+  },
+  {
+    "id": "classic-23",
+    "number": 23,
+    "title": "Mother's Day Song",
+    "artist": "Smile Brigade",
+    "file": "23_Mothers_Day_Song.m4a"
+  },
+  {
+    "id": "classic-24",
+    "number": 24,
+    "title": "Heal the World",
+    "artist": "Michael Jackson",
+    "file": "24_Heal_the_World.m4a"
+  },
+  {
+    "id": "classic-25",
+    "number": 25,
+    "title": "I Believe I Can Fly",
+    "artist": "R. Kelly",
+    "file": "25_I_Believe_I_Can_Fly.m4a"
+  },
+  {
+    "id": "classic-26",
+    "number": 26,
+    "title": "Memory",
+    "artist": "Andrew Lloyd Webber",
+    "file": "26_Memory.m4a"
+  },
+  {
+    "id": "classic-27",
+    "number": 27,
+    "title": "Try Everything",
+    "artist": "Shakira",
+    "file": "27_Try_Everything.m4a"
+  },
+  {
+    "id": "classic-28",
+    "number": 28,
+    "title": "I've Been Working on the Railroad",
+    "artist": "Various Artists",
+    "file": "28_Ive_Been_Working_on_the_Railroad.m4a"
+  },
+  {
+    "id": "classic-29",
+    "number": 29,
+    "title": "Moon River",
+    "artist": "Audrey Hepburn",
+    "file": "29_Moon_River.m4a"
+  },
+  {
+    "id": "classic-30",
+    "number": 30,
+    "title": "The Sound of Silence",
+    "artist": "Simon & Garfunkel",
+    "file": "30_The_Sound_of_Silence.m4a"
+  },
+  {
+    "id": "classic-31",
+    "number": 31,
+    "title": "Dream It Possible",
+    "artist": "Delacey",
+    "file": "31_Dream_It_Possible.m4a"
+  },
+  {
+    "id": "classic-32",
+    "number": 32,
+    "title": "Bridge over Troubled Water",
+    "artist": "Simon & Garfunkel",
+    "file": "32_Bridge_over_Troubled_Water.m4a"
+  },
+  {
+    "id": "classic-33",
+    "number": 33,
+    "title": "What a Wonderful World",
+    "artist": "Louis Armstrong",
+    "file": "33_What_a_Wonderful_World.m4a"
+  },
+  {
+    "id": "classic-34",
+    "number": 34,
+    "title": "Somewhere over the Rainbow",
+    "artist": "Judy Garland",
+    "file": "34_Somewhere_over_the_Rainbow.m4a"
+  },
+  {
+    "id": "classic-35",
+    "number": 35,
+    "title": "Lean on Me",
+    "artist": "Bill Withers",
+    "file": "35_Lean_on_Me.m4a"
+  },
+  {
+    "id": "classic-36",
+    "number": 36,
+    "title": "Stand by Me",
+    "artist": "Ben E. King",
+    "file": "36_Stand_by_Me.m4a"
+  },
+  {
+    "id": "classic-37",
+    "number": 37,
+    "title": "That's What Friends Are for",
+    "artist": "Dionne Warwick, Elton John, Gladys Knight, Stevie Wonder",
+    "file": "37_Thats_What_Friends_Are_For.m4a"
+  },
+  {
+    "id": "classic-38",
+    "number": 38,
+    "title": "You've Got a Friend in Me",
+    "artist": "Randy Newman",
+    "file": "38_Youve_Got_a_Friend_in_Me.m4a"
+  },
+  {
+    "id": "classic-39",
+    "number": 39,
+    "title": "When You Wish upon a Star",
+    "artist": "Sara Bareilles",
+    "file": "39_When_You_Wish_upon_a_Star.m4a"
+  },
+  {
+    "id": "classic-40",
+    "number": 40,
+    "title": "How Far I'll Go",
+    "artist": "Auli'i Cravalho",
+    "file": "40_How_Far_Ill_Go.m4a"
+  }
+]

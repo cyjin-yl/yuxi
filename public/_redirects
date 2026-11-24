@@ -4,3 +4,7 @@
 /songs/:slug  /collections/  301
 /songs/:slug/ /collections/  301
 /song/*       /song/0/       200
+
+# A recovered substantive article replaces the former placeholder.
+/blog/2026-08-31-tech-notes /blog/2026-08-31-discord-50083-io-reader-corruption/ 308
+/blog/2026-08-31-tech-notes/ /blog/2026-08-31-discord-50083-io-reader-corruption/ 308

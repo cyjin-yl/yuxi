@@ -9,6 +9,8 @@ summary: systemd 报 active 不代表 service 真的工作。WorkingDirectory �
 
 import NetEasePlay from '../../components/NetEasePlay.astro';
 
+> 2026-11-24 公开稿整理：账户 `blog-agent` 与 `/home/blog-agent` 均为示例，替代原机器的个人账户；请按实际服务账户调整，原操作原理保持不变。
+
 ## 现象
 
 8 月 11 号早上起来，发现 Discord 上 @ Hermes 完全没有回应。
@@ -31,7 +33,7 @@ $ systemctl status hermes
 $ journalctl -u hermes --since "1 hour ago" -n 50
 Aug 11 07:15:21 hermes-yuxi systemd[1]: Started Hermes Agent.
 Aug 11 07:15:22 hermes python3[2847]: [INFO] connecting to discord gateway...
-Aug 11 07:15:25 hermes python3[2847]: [ERROR] FileNotFoundError: [Errno 2] No such file or directory: '/home/ezra/.config/hermes/credentials.json'
+Aug 11 07:15:25 hermes python3[2847]: [ERROR] FileNotFoundError: [Errno 2] No such file or directory: '/home/blog-agent/.config/hermes/credentials.json'
 Aug 11 07:15:25 hermes systemd[1]: hermes.service: Main process exited, code=exited, status=1/FAILURE
 Aug 11 07:15:25 hermes systemd[1]: hermes.service: Scheduled restart job, restart counter is at 1.
 Aug 11 07:15:26 hermes systemd[1]: Started Hermes Agent.
@@ -53,13 +55,13 @@ systemd unit file 里：
 
 ```ini
 [Service]
-WorkingDirectory=/home/ezra
+WorkingDirectory=/home/blog-agent
 ExecStart=/usr/bin/python3 -m hermes --yolo
 ```
 
-看起来正常，但实际用户的 home 是 `/home/ezra`，credentials 文件在 `/home/ezra/.hermes/credentials.json`——
+看起来正常，但实际用户的 home 是 `/home/blog-agent`，credentials 文件在 `/home/blog-agent/.hermes/credentials.json`——
 
-不对，等等，错误信息说的是 `/home/ezra/.config/hermes/credentials.json`。
+不对，等等，错误信息说的是 `/home/blog-agent/.config/hermes/credentials.json`。
 
 我看了一下 hermes 的代码：
 
@@ -72,22 +74,22 @@ CREDENTIALS_PATH = Path(os.environ.get('HERMES_HOME', '~/.config/hermes')) / 'cr
 
 **问题**：systemd 启动时 `HOME=/root`（默认），所以 `~` 展开成 `/root`，然后 `~/.config/hermes/credentials.json` → `/root/.config/hermes/credentials.json`，找不到。
 
-而我们的实际 credentials 在 `/home/ezra/.hermes/credentials.json`。
+而我们的实际 credentials 在 `/home/blog-agent/.hermes/credentials.json`。
 
 ## 修复
 
 ```ini
 [Service]
-User=ezra
-WorkingDirectory=/home/ezra
-Environment="HOME=/home/ezra"
-Environment="HERMES_HOME=/home/ezra/.hermes"
+User=blog-agent
+WorkingDirectory=/home/blog-agent
+Environment="HOME=/home/blog-agent"
+Environment="HERMES_HOME=/home/blog-agent/.hermes"
 ExecStart=/usr/bin/python3 -m hermes --yolo
 Restart=on-failure
 RestartSec=10
 ```
 
-+ `User=ezra` 让 systemd 以 ezra 身份跑
++ `User=blog-agent` 让 systemd 以 blog-agent 身份跑
 + `Environment="HOME=..."` 显式设 home
 + `Environment="HERMES_HOME=..."` 显式告诉 hermes 配置文件在哪
 

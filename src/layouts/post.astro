@@ -2,9 +2,14 @@
 import BaseLayout from './base.astro';
 import Header from '../components/header.astro';
 import Footer from '../components/footer.astro';
+import widgetStyles from '../styles/widgets.css?url';
 
 interface Props {
   title: string;
+  hasMath?: boolean;
+  backfilledAt?: Date;
+  backfillKind?: 'event' | 'retrospective';
+  headings?: { depth: number; slug: string; text: string }[];
   date: Date;
   tags?: string[];
   description?: string;
@@ -29,9 +34,15 @@ const {
   algo_tags,
   summary,
   self_review,
+  hasMath = false,
+  backfilledAt,
+  backfillKind,
+  headings = [],
 } = Astro.props;
 
-const hasTOC = true;
+const outline = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const hasTOC = outline.length > 0;
+const dateLabel = (value: Date) => value.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' });
 
 function difficultyLabel(d: string) {
   if (d === 'puji') return '普及';
@@ -41,7 +52,8 @@ function difficultyLabel(d: string) {
 }
 ---
 
-<BaseLayout title={title} tags={tags} date={date} description={description}>
+<BaseLayout title={title} tags={tags} date={backfilledAt ?? date} description={description} hasMath={hasMath}>
+  {luogu_url && <link rel="stylesheet" href={widgetStyles} />}
   <Header currentPath="/blog/" />
 
   <main id="main">
@@ -54,6 +66,7 @@ function difficultyLabel(d: string) {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
+              timeZone: 'Asia/Shanghai',
             })
           }
         </time>
@@ -65,6 +78,13 @@ function difficultyLabel(d: string) {
           ))
         }
       </div>
+      {backfilledAt && (
+        <p class="post-backfill-note">
+          历史补写 · <time datetime={backfilledAt.toISOString()}>{dateLabel(backfilledAt)}</time>
+          {backfillKind === 'retrospective' ? ' · 主题回顾' : ' · 历史记录整理'}
+          <span>日期表示归档日期；本文依据留存记录回补，并非当日即时日记。</span>
+        </p>
+      )}
     </header>
 
     {
@@ -132,7 +152,13 @@ function difficultyLabel(d: string) {
                 </button>
               </div>
               <div class="toc-scroll">
-                <nav class="toc-list" id="toc-list"></nav>
+                <nav class="toc-list" id="toc-list">
+                  <ol>{outline.map((heading) => (
+                    <li class:list={[{ 'toc-h3': heading.depth === 3 }]}>
+                      <a href={`#${heading.slug}`}>{heading.text}</a>
+                    </li>
+                  ))}</ol>
+                </nav>
               </div>
             </aside>
           </div>
@@ -156,7 +182,7 @@ function difficultyLabel(d: string) {
 
   {
     hasTOC && (
-      <button type="button" class="toc-mobile-toggle" id="toc-open" aria-label="打开目录" hidden>
+      <button type="button" class="toc-mobile-toggle" id="toc-open" aria-label="打开目录" aria-controls="toc-sidebar" aria-expanded="false" hidden>
         目
       </button>
     )
@@ -165,100 +191,75 @@ function difficultyLabel(d: string) {
   <Footer />
 </BaseLayout>
 
-<script is:inline>
-  document.addEventListener('DOMContentLoaded', () => {
+<script>
+  let cleanup = () => {};
+
+  function prepareContents() {
+    cleanup();
     const content = document.getElementById('post-content');
-    const tocList = document.getElementById('toc-list');
-    const tocWrap = document.getElementById('toc-wrap');
-    const tocSidebar = document.getElementById('toc-sidebar');
-    const tocOpen = document.getElementById('toc-open');
-    const tocClose = document.getElementById('toc-close');
-    const tocBackdrop = document.getElementById('toc-backdrop');
-    if (!content || !tocList || !tocWrap) return;
+    const list = document.getElementById('toc-list');
+    const wrap = document.getElementById('toc-wrap');
+    const sidebar = document.getElementById('toc-sidebar');
+    const open = document.getElementById('toc-open');
+    const close = document.getElementById('toc-close');
+    const backdrop = document.getElementById('toc-backdrop');
+    if (!content || !list || !wrap) return;
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    const headings = content.querySelectorAll('h2[id], h3[id]');
+    wrap.hidden = false;
+    if (open) open.hidden = false;
+    if (backdrop) backdrop.hidden = false;
 
-    const headings = content.querySelectorAll('h2, h3');
-    if (headings.length === 0) {
-      tocWrap.remove();
-      tocOpen?.remove();
-      return;
-    }
-
-    const items = [];
-    headings.forEach((h, i) => {
-      if (!h.id) {
-        const base =
-          (h.textContent || 'section')
-            .trim()
-            .toLowerCase()
-            .replace(/[^\w\u4e00-\u9fff]+/g, '-')
-            .replace(/^-+|-+$/g, '') || `h-${i}`;
-        h.id = base;
-      }
-      items.push({
-        id: h.id,
-        text: (h.textContent || '').trim(),
-        level: h.tagName === 'H2' ? 2 : 3,
-      });
-    });
-
-    let html = '<ol>';
-    items.forEach((item) => {
-      const cls = item.level === 3 ? ' class="toc-h3"' : '';
-      html += `<li${cls}><a href="#${item.id}">${item.text}</a></li>`;
-    });
-    html += '</ol>';
-    tocList.innerHTML = html;
-
-    tocWrap.hidden = false;
-    if (tocOpen) tocOpen.hidden = false;
-    if (tocBackdrop) tocBackdrop.hidden = false;
-
-    function openDrawer() {
-      tocWrap.classList.add('open');
-      document.documentElement.style.overflow = 'hidden';
-      tocClose?.focus();
-    }
-
-    function closeDrawer() {
-      tocWrap.classList.remove('open');
+    function closeDrawer(restoreFocus = true) {
+      wrap!.classList.remove('open');
       document.documentElement.style.overflow = '';
+      open?.setAttribute('aria-expanded', 'false');
+      sidebar?.removeAttribute('role');
+      sidebar?.removeAttribute('aria-modal');
+      if (restoreFocus) open?.focus();
     }
-
-    tocOpen?.addEventListener('click', openDrawer);
-    tocClose?.addEventListener('click', closeDrawer);
-    tocBackdrop?.addEventListener('click', closeDrawer);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && tocWrap.classList.contains('open')) closeDrawer();
-    });
-
-    tocList.querySelectorAll('a').forEach((a) => {
-      a.addEventListener('click', (e) => {
-        const id = a.getAttribute('href')?.slice(1) || '';
-        const target = document.getElementById(id);
-        if (!target) return;
-        e.preventDefault();
-        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-        history.replaceState(null, '', `#${id}`);
-        if (window.matchMedia('(max-width: 1099px)').matches) closeDrawer();
-      });
-    });
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const id = entry.target.id;
-          const link = tocList.querySelector(`a[href="#${CSS.escape(id)}"]`);
-          if (!link) return;
-          tocList.querySelectorAll('a').forEach((l) => l.classList.remove('active'));
-          link.classList.add('active');
-        });
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-
-    headings.forEach((h) => observer.observe(h));
-  });
+    open?.addEventListener('click', () => {
+      wrap.classList.add('open');
+      document.documentElement.style.overflow = 'hidden';
+      open.setAttribute('aria-expanded', 'true');
+      sidebar?.setAttribute('role', 'dialog');
+      sidebar?.setAttribute('aria-modal', 'true');
+      close?.focus();
+    }, options);
+    close?.addEventListener('click', () => closeDrawer(), options);
+    backdrop?.addEventListener('click', () => closeDrawer(), options);
+    document.addEventListener('keydown', (event) => {
+      if (!wrap.classList.contains('open')) return;
+      if (event.key === 'Escape') closeDrawer();
+      if (event.key === 'Tab' && sidebar) {
+        const items = [...sidebar.querySelectorAll<HTMLElement>('button, a[href]')];
+        const first = items[0], last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    }, options);
+    list.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      const link = event.target.closest<HTMLAnchorElement>('a[href^="#"]');
+      const id = link?.getAttribute('href')?.slice(1);
+      const target = id ? document.getElementById(id) : null;
+      if (!target) return;
+      event.preventDefault();
+      if (window.matchMedia('(max-width: 1099px)').matches) closeDrawer(false);
+      target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      history.replaceState(null, '', `#${encodeURIComponent(id!)}`);
+    }, options);
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        list.querySelectorAll('a').forEach((link) => link.classList.toggle('active', link.getAttribute('href') === `#${entry.target.id}`));
+      }
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    headings.forEach((heading) => observer.observe(heading));
+    cleanup = () => { controller.abort(); observer.disconnect(); closeDrawer(false); };
+  }
+  document.addEventListener('astro:page-load', prepareContents);
+  document.addEventListener('astro:before-swap', () => cleanup());
+  prepareContents();
 </script>

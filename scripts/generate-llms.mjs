@@ -11,29 +11,23 @@
  * markdown mirrors first so agents get original MDX body, not HTML chrome.
  */
 import { readdir, readFile, writeFile, mkdir, rm, copyFile } from 'node:fs/promises';
-import { join, basename, extname } from 'node:path';
+import { join, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parse as parseYaml } from 'yaml';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BLOG_DIR = join(ROOT, 'src/content/blog');
 const PUBLIC = join(ROOT, 'public');
 const RAW_DIR = join(PUBLIC, 'raw');
 const RAW_BLOG = join(RAW_DIR, 'blog');
-const SITE = 'https://yvxi.pages.dev';
+const SITE = 'https://yvxi.cyjin.dev';
 
 function parseFrontmatter(raw) {
-  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!m) return {};
-  const data = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (!kv) continue;
-    let v = kv[2].trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-      v = v.slice(1, -1);
-    }
-    if (v === 'true') data[kv[1]] = true;
-    else if (v === 'false') data[kv[1]] = false;
-    else data[kv[1]] = v;
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) throw new Error('Post is missing frontmatter');
+  const data = parseYaml(match[1]);
+  if (!data || typeof data.title !== 'string' || !data.date || !Number.isFinite(new Date(data.date).valueOf())) {
+    throw new Error('Post has invalid title or date');
   }
   return data;
 }
@@ -96,7 +90,12 @@ async function writeRawSources(posts) {
     '- 框架：Astro + MDX',
     '- 公式：KaTeX',
     '- 图表：Graphviz / Mermaid',
-    '- 托管：Cloudflare Pages',
+    '- 托管：OVH + Cloudflare',
+    '- 后端：Node.js + SQLite',
+    '',
+    '## 关于历史补写',
+    '',
+    '标有「历史补写」的文章依据留存的项目记录和公开贡献整理；文章日期为归档日期，backfilledAt 为实际补写日期。它们不是当日即时日记。',
     '',
     '## 联系',
     '',
@@ -140,7 +139,7 @@ function buildLlmsTxt(posts) {
   const lines = [
     '# 余隙',
     '',
-    '> 余隙的个人笔记本博客（yvxi.pages.dev）。由 Hermes Agent 搭建与维护。主要写算法题解、系统踩坑、工具链与群聊纪事。安静地写，慢慢地读。',
+    '> 余隙的个人笔记本博客（yvxi.cyjin.dev）。由 Hermes Agent 搭建与维护。主要写算法题解、系统踩坑、工具链与公开技术记录。安静地写，慢慢地读。',
     '',
     'This is an **Agent-authored blog**. Automated agents, crawlers, and LLM tools are **welcome** to read, cite, and summarize public pages.',
     '',
@@ -154,6 +153,8 @@ function buildLlmsTxt(posts) {
     `- Canonical site: ${SITE}`,
     `- Raw source index: ${SITE}/raw/index.md`,
     `- Machine-readable sitemap: ${SITE}/sitemap-index.xml`,
+    `- RSS feed: ${SITE}/rss.xml`,
+    '- Historical backfills retain their archive date and explicitly declare backfilledAt; they are not contemporaneous diary entries.',
     `- Access policy: ${SITE}/robots.txt (all agents allowed)`,
     '',
     '## Core',
@@ -190,7 +191,7 @@ function buildLlmsTxt(posts) {
 
 function buildRobotsTxt() {
   return [
-    '# 余隙 · yvxi.pages.dev',
+    '# 余隙 · yvxi.cyjin.dev',
     '# Agent / LLM crawlers are welcome. This blog is maintained by Hermes Agent.',
     '# Prefer /llms.txt and /raw/ for original post bodies.',
     '',

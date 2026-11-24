@@ -1,17 +1,10 @@
+name: Legacy Cloudflare Worker (manual recovery only)
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'workers/**'
-      - 'wrangler-party.jsonc'
-      - '.github/workflows/deploy-party-worker.yml'
   workflow_dispatch:
 
-# The listen-together Durable Object lives in its own worker (yvxi-party),
-# separate from the Pages project. Pages auto-deploys from main via the
-# Cloudflare Git integration; this worker has no git integration, so it must
-# be deployed explicitly. Run this when workers/party-room.ts changes — or
-# trigger it manually from the Actions tab.
+# Production now runs the SQLite backend on OVH. The old Worker is retained
+# for recovery; publishing to main must not mutate its historical data.
 
 jobs:
   deploy:
@@ -34,7 +27,7 @@ jobs:
         run: npx tsc -p workers/tsconfig.json
 
       - name: Run DO integration tests
-        run: npm test
+        run: npm run test:legacy-worker
 
       - name: Dry-run bundle
         run: npx wrangler deploy --config wrangler-party.jsonc --dry-run --outdir dist-worker

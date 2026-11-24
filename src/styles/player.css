@@ -1,0 +1,972 @@
+/* ── Global collection player shell (Apple Music inspired) ── */
+.yp-shell {
+  position: fixed;
+  z-index: 400;
+  /* shell itself ignores hits; only backdrop + panel accept them */
+  pointer-events: none;
+}
+.yp-shell * { box-sizing: border-box; }
+
+.yp-backdrop {
+  pointer-events: auto;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: rgba(20, 18, 16, 0.34);
+  cursor: default;
+  opacity: 1;
+  /* Spring-ish ease so the dim veil rises/settles with the shell. */
+  transition: opacity 520ms cubic-bezier(.22,1,.36,1);
+}
+.yp-backdrop.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.yp-panel {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  /* Soft paper base; real surface is ~75% paper veil over cover blur. */
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+  border: var(--hair) solid var(--rule);
+  box-shadow: 0 8px 28px rgba(20, 18, 16, 0.12);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  will-change: transform, border-radius;
+  transition:
+    border-radius 480ms cubic-bezier(.22,1,.36,1),
+    background 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.yp-grabber {
+  display: flex;
+  justify-content: center;
+  padding: 0.45rem 0 0.1rem;
+}
+.yp-grabber span {
+  width: 2.25rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-3) 45%, transparent);
+}
+
+.yp-wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.yp-wallpaper img {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scale(1.18);
+  filter: blur(48px) saturate(1.45) brightness(0.72);
+}
+/* ~75% paper veil ON TOP of the blurred cover in mini / sheet / full. */
+.yp-wallpaper-veil {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+}
+.yp-panel > :not(.yp-wallpaper) { position: relative; z-index: 1; }
+.yp-shell.yp-expand-full .yp-lyrics-head { background: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .yp-backdrop { transition: none; }
+  .yp-panel { transition: none; }
+}
+
+.yp-chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.yp-artwork,
+.yp-art {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.45rem;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, var(--mark-soft), var(--paper-2));
+  box-shadow: 0 2px 8px rgba(20, 18, 16, 0.08);
+}
+.yp-artwork img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.yp-artwork-fallback,
+.yp-art {
+  display: grid;
+  place-items: center;
+  color: var(--mark);
+}
+.yp-artwork.is-large {
+  width: min(18rem, 70vw);
+  height: min(18rem, 70vw);
+  border-radius: 0.85rem;
+  margin: 0.5rem auto 1rem;
+  box-shadow: 0 10px 28px rgba(20, 18, 16, 0.12);
+}
+.yp-artwork-enter {
+  transform-origin: 50% 60%;
+  animation: yp-artwork-spring 780ms linear both;
+}
+@keyframes yp-artwork-spring {
+  0% { opacity: 0; transform: translateY(3.5rem) scale(0.72); }
+  22% { opacity: 1; transform: translateY(-0.8rem) scale(1.075); }
+  42% { transform: translateY(0.35rem) scale(0.965); }
+  61% { transform: translateY(-0.15rem) scale(1.018); }
+  78% { transform: translateY(0.06rem) scale(0.993); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yp-artwork-enter { animation: none; }
+}
+
+.yp-meta { min-width: 0; flex: 1; }
+.yp-title {
+  font-weight: 650;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yp-sub {
+  font-size: 0.78rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yp-controls { display: flex; align-items: center; gap: 0.15rem; flex-shrink: 0; }
+.yp-icon-btn {
+  appearance: none; border: 0; background: transparent; color: var(--ink-2);
+  width: 2.25rem; height: 2.25rem; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.yp-icon-btn:hover { background: color-mix(in srgb, var(--paper-2) 80%, transparent); color: var(--ink); }
+.yp-play-btn {
+  appearance: none; border: 0;
+  width: 2.55rem; height: 2.55rem; border-radius: 999px;
+  background: var(--ink); color: var(--card);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.yp-play-btn:hover { filter: brightness(1.05); }
+.yp-play-btn:active { transform: scale(0.96); }
+.yp-play-lg {
+  width: 4rem; height: 4rem;
+  background: var(--ink); color: var(--card);
+}
+
+.yp-mini-progress {
+  height: 2px;
+  background: color-mix(in srgb, var(--rule) 80%, transparent);
+}
+.yp-mini-progress-fill {
+  height: 100%;
+  background: var(--mark);
+  border-radius: 999px;
+}
+
+.yp-progress-wrap { padding: 0.35rem 1.1rem 0.25rem; width: 100%; max-width: 28rem; margin: 0 auto; }
+.yp-progress { display: flex; align-items: center; gap: 0.5rem; }
+.yp-time {
+  font-family: var(--font-mono); font-size: 0.68rem;
+  color: var(--ink-3); min-width: 2.2rem; font-variant-numeric: tabular-nums;
+}
+.yp-bar {
+  flex: 1; height: 1.55rem; position: relative;
+  display: flex; align-items: center; touch-action: none;
+  cursor: pointer; user-select: none;
+}
+.yp-bar::before {
+  content: ''; position: absolute; left: 0; right: 0; height: 0.28rem;
+  top: 50%; transform: translateY(-50%);
+  background: color-mix(in srgb, var(--ink-3) 28%, transparent);
+  border-radius: 999px;
+}
+.yp-bar-fill {
+  position: absolute; left: 0; height: 0.28rem; top: 50%;
+  transform: translateY(-50%); background: var(--ink);
+  border-radius: 999px; z-index: 1; pointer-events: none;
+}
+.yp-bar-knob {
+  position: absolute; top: 50%; width: 0.85rem; height: 0.85rem;
+  border-radius: 999px; background: var(--ink); border: 2px solid var(--card);
+  transform: translate(-50%, -50%); z-index: 2; pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.yp-bar:hover .yp-bar-knob,
+.yp-bar:active .yp-bar-knob,
+.yp-bar.is-dragging .yp-bar-knob { opacity: 1; }
+.yp-bar.is-dragging .yp-bar-fill,
+.yp-bar.is-dragging::before {
+  transition: none;
+}
+
+.yp-now {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) minmax(0, 1.15fr);
+  gap: 0.5rem 1.25rem;
+  min-height: 0;
+  flex: 1;
+  padding: 0.25rem 0.75rem 0.9rem;
+}
+.yp-now-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem 1rem;
+  min-width: 0;
+}
+.yp-now-meta { text-align: center; margin-bottom: 0.75rem; width: 100%; max-width: 22rem; }
+.yp-now-title {
+  font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.yp-now-sub { margin-top: 0.25rem; color: var(--ink-3); font-size: 0.95rem; }
+.yp-artist-links {
+  /* Artist chips must never dictate the width of the row they live in:
+     tracks like "We Are The World" credit 20+ artists. Wrap instead of
+     overflowing, clamp to a few lines, fade the tail with an ellipsis. */
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.yp-artist-sep { opacity: 0.55; padding: 0 0.15em; }
+.yp-now-sub.yp-artist-links.yp-artist-links {
+  /* NOTE: -webkit-line-clamp forces display:flow-root in current Chromium
+     builds, so we clamp by height instead: block layout wraps the chips and
+     anything past two lines is simply cropped. */
+  display: block;
+  max-height: 2.9em;
+  line-height: 1.35;
+  overflow: hidden;
+  min-width: 0;
+}
+.yp-artist-link {
+  /* Clickable artist chip: inherits text color from siblings, zero chrome. */
+  background: transparent;
+  border: 0;
+  padding: 0.05em 0.18em;
+  margin: -0.05em 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.yp-artist-link:hover {
+  color: var(--mark);
+  background: color-mix(in srgb, var(--mark-soft, transparent) 0%, transparent);
+}
+.yp-artist-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--mark) 70%, transparent);
+  outline-offset: 1px;
+}
+/* Inside the queue / search list items the artist chip lives inside an
+   outer <button>, so keep the hover background truly invisible to avoid
+   double-clickable rectangle artifacts. */
+button .yp-artist-link { background: transparent !important; }
+.yp-transport {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1.1rem; margin-top: 0.85rem;
+}
+.yp-transport-btn { width: 2.75rem; height: 2.75rem; color: var(--ink); }
+.yp-mode-btn { width: 2.5rem; height: 2.5rem; color: var(--ink); opacity: 1; transition: color 160ms ease, transform 160ms ease; }
+.yp-mode-btn:hover { color: var(--ink); transform: translateY(-1px); }
+.yp-mode-btn:active { transform: scale(0.92); }
+.yp-mobile .yp-mode-btn { width: 2.5rem; height: 2.5rem; }
+.yp-now-actions {
+  display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: center;
+}
+.yp-text-btn {
+  appearance: none; border: 0; background: transparent;
+  color: var(--ink-2); font-size: 0.82rem;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.35rem 0.5rem; border-radius: 999px; cursor: pointer;
+}
+.yp-text-btn:hover { background: var(--paper-2); color: var(--ink); }
+
+.yp-now-side {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: transparent;
+  border: 0;
+}
+
+.yp-lyrics {
+  overflow-y: auto; padding: 1rem 1.1rem 1.25rem;
+  -webkit-overflow-scrolling: touch; min-height: 0;
+  /* Soft vertical gradient mask so far lines fade into the panel rather than
+     hard-cutting at the scroll edge. */
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 8%,
+    #000 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 8%,
+    #000 88%,
+    transparent 100%
+  );
+  /* Keep scroll, hide the scrollbar chrome. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.yp-lyrics::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.yp-lyrics-empty {
+  padding: 2.5rem 1rem; text-align: center; color: var(--ink-3); font-size: 0.9rem;
+}
+.yp-line {
+  padding: 0.65rem 0.55rem; border-radius: 0.75rem;
+  cursor: pointer; margin-bottom: 0.15rem;
+  opacity: var(--yp-line-opacity, 0.34);
+  filter: blur(var(--yp-line-blur, 1.2px)) saturate(var(--yp-line-sat, 0.95));
+  /* Whole-line GPU scale only. Left origin + overflow clamp keeps it in pane. */
+  transform: scale(var(--yp-line-scale, 1));
+  transform-origin: left center;
+  max-width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    opacity 420ms cubic-bezier(.22,1,.36,1),
+    filter 420ms cubic-bezier(.22,1,.36,1),
+    transform 420ms cubic-bezier(.22,1,.36,1),
+    background 180ms ease;
+  will-change: transform, opacity, filter;
+}
+.yp-line.is-past {}
+.yp-line:hover {
+  opacity: 0.9; filter: none;
+  background: color-mix(in srgb, var(--mark-soft) 30%, transparent);
+}
+.yp-line.is-active {
+  opacity: 1;
+  filter: none;
+  --yp-line-blur: 0px;
+  --yp-line-opacity: 1;
+  --yp-line-sat: 1;
+  background: none;
+}
+.yp-line.is-active .yp-line-en {
+  font-weight: 750;
+  color: var(--ink);
+  text-shadow: 0 0 1.25rem color-mix(in srgb, var(--mark) 24%, transparent);
+  line-height: 1.75;
+  padding-block: 0.18em;
+}
+.yp-line-en {
+  display: flex; flex-wrap: wrap;
+  gap: 0.12em 0.28em;
+  font-size: clamp(1.05rem, 0.5rem + 1.5vw + 0.85vh, 1.55rem);
+  line-height: 1.75;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--ink) 48%, transparent);
+  max-width: 100%;
+}
+.yp-line-en.is-cjk {
+  gap: 0.04em 0.08em;
+  letter-spacing: 0.04em;
+}
+.yp-line-en.is-line-mask {
+  display: block;
+  background-image: linear-gradient(
+    90deg,
+    var(--ink) var(--yp-en-progress, 0%),
+    color-mix(in srgb, var(--ink) 42%, transparent) var(--yp-en-progress, 0%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.yp-line-en.is-line-mask.is-active {
+  font-weight: 750;
+  text-shadow: 0 0 1.25rem color-mix(in srgb, var(--mark) 24%, transparent);
+}
+.yp-line-en.is-line-mask.is-sung {
+  --yp-en-progress: 100%;
+}
+.yp-word {
+  border-radius: 0.35rem;
+  padding: 0.02em 0;
+  cursor: pointer;
+  /* No transitions on color/filter/gradient: mask fill is per-frame from JS,
+     and a fade-in on glow would flash once when a word becomes current. */
+  /* Default mask at 0% so a newly-current word never flashes fully lit. */
+  --yp-word-progress: 0%;
+}
+.yp-line-en.is-cjk .yp-word { padding: 0; }
+.yp-word:hover { background: color-mix(in srgb, var(--mark) 12%, transparent); }
+/* In-progress word: fill from left by --yp-word-progress (must default to 0%). */
+.yp-word.is-hi {
+  background-image: linear-gradient(
+    90deg,
+    var(--ink) var(--yp-word-progress, 0%),
+    color-mix(in srgb, var(--ink) 42%, transparent) var(--yp-word-progress, 0%)
+  );
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 0.4rem color-mix(in srgb, var(--mark) 38%, transparent));
+  font-weight: 720;
+}
+/* Completed word: fully filled, no intermediate 100% flash-then-cover. */
+.yp-word.is-sung {
+  background-image: linear-gradient(
+    90deg,
+    var(--ink) 100%,
+    var(--ink) 100%
+  );
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 0.35rem color-mix(in srgb, var(--mark) 32%, transparent));
+  font-weight: 720;
+}
+.yp-line.is-active .yp-word.is-hi ~ .yp-word:not(.is-sung):not(.is-hi) {
+  background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  color: color-mix(in srgb, var(--ink) 42%, transparent);
+  filter: none;
+}
+.yp-lyrics {
+  overflow-x: hidden; /* clamp whole-line scale so it never crosses the right edge */
+}
+.yp-line-cn {
+  margin-top: 0.25rem;
+  /* Share the same fluid base size family as original; scale inherits from line. */
+  font-size: 0.92em;
+  font-style: normal;
+  pointer-events: none;
+  opacity: 0.78;
+  /* Estimated left→right mask tracks the English progress of the line. */
+  background-image: linear-gradient(
+    90deg,
+    var(--ink) var(--yp-cn-progress, 0%),
+    color-mix(in srgb, var(--ink) 42%, transparent) var(--yp-cn-progress, 0%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* Match original glow intensity so translation doesn't look flat. */
+  filter: drop-shadow(0 0 0.15rem color-mix(in srgb, var(--mark) 0%, transparent));
+  transition: filter 180ms linear, opacity 180ms linear;
+}
+.yp-line-cn.is-active {
+  opacity: 0.98;
+  font-weight: 650;
+  filter: drop-shadow(0 0 0.55rem color-mix(in srgb, var(--mark) 42%, transparent))
+    drop-shadow(0 0 1.1rem color-mix(in srgb, var(--mark) 22%, transparent));
+  text-shadow: 0 0 1.1rem color-mix(in srgb, var(--mark) 28%, transparent);
+}
+.yp-line-cn.is-sung {
+  --yp-cn-progress: 100%;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 0.35rem color-mix(in srgb, var(--mark) 28%, transparent));
+}
+.yp-line.is-past .yp-line-cn {
+  --yp-cn-progress: 100%;
+  opacity: 0.78;
+  filter: drop-shadow(0 0 0.2rem color-mix(in srgb, var(--mark) 18%, transparent));
+}
+.yp-line.is-active .yp-line-en {
+  /* Soft ambient glow on the whole active original line. */
+  filter: drop-shadow(0 0 0.45rem color-mix(in srgb, var(--mark) 28%, transparent));
+}
+.yp-line-cn.is-sung {
+  /* Fully revealed after the English line finishes — stay lit, no snap-back. */
+  --yp-cn-progress: 100%;
+  opacity: 0.88;
+}
+.yp-line.is-past .yp-line-cn {
+  --yp-cn-progress: 100%;
+  opacity: 0.78;
+}
+
+.yp-queue {
+  border-top: var(--hair) solid var(--rule);
+  max-height: 11rem; overflow-y: auto;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+}
+.yp-queue-head {
+  padding: 0.55rem 0.85rem; font-size: 0.72rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-3);
+  position: sticky; top: 0;
+}
+.yp-queue-list { list-style: none; margin: 0; padding: 0.25rem 0.35rem 0.5rem; }
+.yp-queue-item {
+  width: 100%; display: flex; gap: 0.5rem; align-items: center;
+  text-align: left; border: 0; background: transparent; color: var(--ink-2);
+  padding: 0.45rem 0.5rem; border-radius: 0.55rem;
+  font-size: 0.84rem; cursor: pointer;
+}
+.yp-queue-item:hover {
+  background: color-mix(in srgb, var(--paper-2) 60%, transparent);
+  color: var(--ink);
+}
+.yp-queue-item.is-current {
+  background: color-mix(in srgb, var(--mark-soft) 60%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+.yp-queue-num {
+  font-family: var(--font-mono); font-size: 0.68rem;
+  color: var(--ink-3); min-width: 1.5rem; flex-shrink: 0;
+}
+.yp-queue-meta {
+  min-width: 0; flex: 1;
+  display: flex; flex-direction: column; gap: 0.1rem;
+}
+.yp-queue-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yp-queue-artist {
+  font-size: 0.72rem; color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Chips are inline-flex; give the row an explicit floor so a 20-artist
+     credit line cannot inflate the flex item past its container. */
+  min-width: 0;
+  max-width: 100%;
+}
+.yp-search-artist.yp-artist-links { min-width: 0; }
+.yp-queue-item.is-current .yp-queue-artist { color: color-mix(in srgb, var(--ink) 62%, transparent); }
+.yp-like-btn { width: 2.5rem; height: 2.5rem; color: var(--ink); }
+.yp-like-btn.is-liked { color: #e2556e; }
+.yp-like-btn:hover { color: #e2556e; transform: translateY(-1px); }
+.netease-card-liked .netease-cover-wrap {
+  position: relative;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #e2556e 45%, transparent);
+}
+.local-likes-badge {
+  position: absolute;
+  z-index: 2;
+  top: 0.45rem;
+  left: 0.45rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: color-mix(in srgb, #e2556e 88%, #000);
+  box-shadow: 0 2px 8px rgba(20, 18, 16, 0.2);
+}
+.local-likes-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+.local-likes-section {
+  margin-bottom: 0.5rem;
+}
+
+/* Desktop: bottom-right mini → sheet → full */
+.yp-desktop.yp-expand-mini {
+  right: max(1.1rem, env(safe-area-inset-right));
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  width: min(24.5rem, calc(100vw - 2rem));
+}
+.yp-desktop.yp-expand-mini .yp-panel { border-radius: 1rem; }
+.yp-desktop.yp-expand-sheet {
+  right: max(1.1rem, env(safe-area-inset-right));
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  width: min(52rem, calc(100vw - 2rem));
+}
+.yp-desktop.yp-expand-sheet .yp-panel {
+  border-radius: 1.15rem;
+  max-height: min(82vh, 44rem);
+  height: min(82vh, 44rem);
+}
+.yp-desktop.yp-expand-full { inset: 0; }
+.yp-desktop.yp-expand-full .yp-panel {
+  position: fixed; inset: 0;
+  z-index: 1;
+  border-radius: 0; border: 0;
+  max-height: none; height: 100%;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+}
+.yp-desktop.yp-expand-full .yp-now {
+  flex: 1; min-height: 0;
+  grid-template-columns: minmax(20rem, 0.95fr) minmax(22rem, 1.15fr);
+  padding: 1.5rem 2.5rem 2rem;
+  align-items: stretch;
+}
+.yp-desktop.yp-expand-full .yp-artwork.is-large {
+  width: min(22rem, 36vw);
+  height: min(22rem, 36vw);
+}
+.yp-desktop.yp-expand-full .yp-now-side {
+  min-height: 0;
+}
+.yp-desktop.yp-expand-full .yp-lyrics { max-height: none; }
+.yp-desktop.yp-expand-full .yp-queue { max-height: 14rem; }
+
+/* Mobile: bottom mini bar → bottom sheet (Apple Music-like) */
+.yp-mobile { left: 0; right: 0; bottom: 0; }
+.yp-mobile .yp-panel {
+  border-radius: 1rem 1rem 0 0;
+  border-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* fill the sheet so children can flex */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.yp-mobile.yp-expand-mini .yp-panel {
+  box-shadow: 0 -4px 16px rgba(20, 18, 16, 0.08);
+}
+.yp-mobile.yp-expand-sheet .yp-panel {
+  height: min(92dvh, 52rem);
+  max-height: min(92dvh, 52rem);
+}
+.yp-mobile.yp-expand-full {
+  inset: 0;
+}
+.yp-mobile.yp-expand-full .yp-panel {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  /* translucent so the player-only blurred wallpaper shows through */
+  background: color-mix(in srgb, var(--paper) 75%, transparent);
+}
+/* Expanded sheet body: single column, lyrics get remaining height */
+.yp-mobile .yp-now {
+  display: flex;
+  flex-direction: column-reverse;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+  padding: 0 0.35rem 0.35rem;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+/* Compact header: small art + title + transport (not a huge square) */
+.yp-mobile .yp-now-main {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  grid-template-areas:
+    "art meta"
+    "progress progress"
+    "transport transport";
+  gap: 0.45rem 0.75rem;
+  align-items: center;
+  padding: 0.15rem 0.65rem 0.55rem;
+  width: 100%;
+}
+.yp-mobile .yp-artwork.is-large {
+  grid-area: art;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0;
+  border-radius: 0.55rem;
+  box-shadow: 0 2px 10px rgba(20, 18, 16, 0.1);
+}
+.yp-mobile .yp-now-meta {
+  grid-area: meta;
+  text-align: left;
+  margin: 0;
+  max-width: none;
+  min-width: 0;
+}
+.yp-mobile .yp-now-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yp-mobile .yp-now-sub {
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.yp-mobile .yp-progress-wrap {
+  grid-area: progress;
+  padding: 0.15rem 0 0;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+.yp-mobile .yp-transport {
+  grid-area: transport;
+  margin-top: 0.15rem;
+  gap: 1.4rem;
+}
+.yp-mobile .yp-play-lg {
+  width: 3.25rem;
+  height: 3.25rem;
+}
+.yp-mobile .yp-transport-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+/* Lyrics column takes all leftover height and scrolls */
+.yp-mobile .yp-now-side {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  margin: 0 0.35rem;
+}
+.yp-mobile .yp-lyrics {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  max-height: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.65rem 0.85rem 1.25rem;
+  overscroll-behavior: contain;
+}
+.yp-mobile .yp-queue {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  border-top: var(--hair) solid var(--rule);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.yp-mobile .yp-chrome { padding: 0.45rem 0.75rem 0.35rem; }
+.yp-mobile.yp-expand-mini .yp-chrome { cursor: pointer; }
+/* Give active lyric more room to breathe on phones */
+.yp-mobile .yp-line {
+  padding: 0.7rem 0.5rem;
+}
+
+
+/* Expand / collapse — quiet, cheap motion */
+.yp-panel {
+  transition: opacity 0.2s ease, transform 0.25s ease;
+  transform-origin: bottom center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .yp-panel, .yp-backdrop {
+    transition: none !important;
+  }
+}
+
+/* ── Side tabs (lyrics · queue · search · party) ── */
+.yp-now-side { display: flex; flex-direction: column; min-height: 0; }
+.yp-side-tabs {
+  display: flex; gap: 0.25rem; padding: 0.4rem 0.6rem 0;
+  /* No filled hairline — keep the divider transparent so it never reads as white. */
+  border-bottom: var(--hair) solid transparent;
+  flex: 0 0 auto;
+}
+.yp-side-tabs button {
+  appearance: none; border: 0; background: transparent;
+  color: var(--ink-3); font-size: 0.8rem; padding: 0.4rem 0.7rem;
+  border-radius: 0.5rem 0.5rem 0 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border-bottom: 2px solid transparent;
+}
+.yp-side-tabs button:hover { color: var(--ink); }
+.yp-side-tabs button.is-active {
+  color: var(--ink); font-weight: 600;
+  border-bottom-color: var(--mark);
+}
+.yp-side-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.yp-side-body > * { flex: 1 1 auto; min-height: 0; }
+
+/* Standalone queue fills the tab body and scrolls */
+.yp-queue-standalone {
+  border-top: 0; max-height: none; overflow-y: auto;
+  background: transparent; flex: 1 1 auto;
+}
+.yp-queue-standalone .yp-queue-head {
+  background: transparent;
+}
+.yp-queue-list li {
+  display: flex; align-items: stretch; gap: 0.15rem;
+  border-radius: 0.55rem;
+}
+.yp-queue-list li.is-over {
+  outline: 2px solid var(--mark);
+  outline-offset: -2px;
+}
+.yp-queue-grip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; flex: 0 0 auto; color: var(--ink-3);
+  cursor: grab; user-select: none; touch-action: none;
+  font-size: 0.7rem; letter-spacing: -0.12em; opacity: 0.55;
+}
+.yp-queue-grip:hover { opacity: 1; }
+.yp-queue-list li .yp-queue-item { flex: 1 1 auto; min-width: 0; }
+
+/* ── Search panel ── */
+.yp-search { display: flex; flex-direction: column; min-height: 0; padding: 0.6rem; gap: 0.5rem; }
+.yp-search-form { display: flex; gap: 0.4rem; }
+.yp-search-form input {
+  flex: 1 1 auto; min-width: 0;
+  border: var(--hair) solid var(--rule); border-radius: 0.55rem;
+  background: var(--paper-2); color: var(--ink);
+  padding: 0.5rem 0.7rem; font-size: 0.88rem;
+}
+.yp-search-form input:focus { outline: 2px solid var(--mark); outline-offset: -1px; }
+.yp-search-form button {
+  appearance: none; border: 0; border-radius: 0.55rem;
+  background: var(--ink); color: var(--card);
+  padding: 0.5rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+}
+.yp-search-form button:disabled { opacity: 0.5; cursor: default; }
+.yp-search-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+.yp-search-item { display: flex; align-items: stretch; gap: 0.25rem; }
+.yp-search-item .yp-queue-item { flex: 1 1 auto; min-width: 0; }
+.yp-search-cover { width: 2rem; height: 2rem; border-radius: 0.35rem; object-fit: cover; flex: 0 0 auto; }
+.yp-search-text { display: flex; flex-direction: column; min-width: 0; }
+.yp-search-artist { font-size: 0.75rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yp-search-add {
+  appearance: none; border: var(--hair) solid var(--rule);
+  background: transparent; color: var(--ink-2);
+  width: 2.2rem; border-radius: 0.55rem; font-size: 1.1rem;
+  cursor: pointer; flex: 0 0 auto;
+}
+.yp-search-add:hover { background: var(--paper-2); color: var(--ink); }
+
+/* ── Party panel ── */
+.yp-party { display: flex; flex-direction: column; min-height: 0; padding: 0.6rem; gap: 0.5rem; }
+.yp-party-intro { color: var(--ink-2); font-size: 0.85rem; margin: 0; line-height: 1.5; }
+.yp-party-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+.yp-party-join { margin: 0; }
+.yp-party-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.yp-party-code {
+  font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700;
+  letter-spacing: 0.12em; color: var(--mark);
+}
+.yp-party-name { font-size: 0.82rem; color: var(--ink-2); }
+.yp-party-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.yp-party-member {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+  background: color-mix(in srgb, var(--paper-2) 85%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem 0.2rem 0.4rem;
+}
+.yp-party-member-dot {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-3) 55%, transparent);
+}
+.yp-party-member.is-online { color: var(--ink-2); }
+.yp-party-member.is-online .yp-party-member-dot { background: #3bb273; box-shadow: 0 0 0.35rem color-mix(in srgb, #3bb273 55%, transparent); }
+.yp-party-member.is-host { font-weight: 600; color: var(--ink); }
+.yp-party-now {
+  font-size: 0.82rem; color: var(--ink-2);
+  background: var(--paper-2); border-radius: 0.55rem;
+  padding: 0.45rem 0.6rem;
+}
+.yp-party-chat {
+  flex: 1 1 auto; min-height: 4rem; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.2rem 0.1rem;
+}
+.yp-party-msg { font-size: 0.84rem; line-height: 1.45; }
+.yp-party-msg-name { color: var(--mark); font-weight: 600; margin-right: 0.35rem; }
+.yp-party-dot {
+  display: inline-block; width: 0.5rem; height: 0.5rem;
+  border-radius: 999px; background: var(--mark);
+  margin-left: 0.4rem; vertical-align: middle;
+}
+
+/* Mobile: tabs get full width, touch drag on the grip */
+.yp-mobile .yp-side-tabs button { flex: 1 1 0; justify-content: center; font-size: 0.78rem; padding: 0.45rem 0.2rem; }
+.yp-mobile .yp-queue-grip { width: 2rem; opacity: 0.8; font-size: 0.8rem; }
+
+/* Long-title marquee (Apple Music-style scroll) */
+.yp-marquee {
+  display: block; overflow: hidden; min-width: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1rem, #000 calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(90deg, transparent 0, #000 1rem, #000 calc(100% - 1rem), transparent);
+}
+.yp-marquee-text {
+  display: inline-block; white-space: nowrap;
+}
+.yp-marquee-text[data-overflow] {
+  animation: yp-marquee linear infinite alternate;
+}
+@keyframes yp-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-1 * var(--yp-marquee-px, 0px))); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yp-marquee-text[data-overflow] { animation: none; }
+}
+
+/* Lyrics header with song title */
+.yp-lyrics-head {
+  position: sticky; top: 0; z-index: 2;
+  padding: 0.7rem 0.55rem 0.5rem;
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: var(--hair) solid transparent;
+}
+.yp-lyrics-head-title { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; }
+.yp-lyrics-head-artist { color: var(--ink-3); font-size: 0.8rem; margin-top: 0.1rem; }
+
+/* Party room list */
+.yp-party-rooms { border-top: var(--hair) solid var(--rule); margin-top: 0.4rem; padding-top: 0.5rem; }
+.yp-party-rooms-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.8rem; color: var(--ink-3); margin-bottom: 0.4rem;
+}
+.yp-party-room-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.yp-party-room {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  background: var(--paper-2); border-radius: 0.55rem; padding: 0.45rem 0.6rem;
+}
+.yp-party-room-info { display: flex; flex-direction: column; min-width: 0; }
+.yp-party-room-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yp-party-room-meta { color: var(--ink-3); font-size: 0.75rem; font-family: var(--font-mono); }
+
+
+body.has-player {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 721px) {
+  body.has-player { padding-bottom: 0; }
+}

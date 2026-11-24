@@ -55,42 +55,26 @@ export function hasThumbnail(url: string | undefined | null): url is string {
  * Returns null on any error so callers can degrade gracefully.
  */
 const memCache = new Map<string, unknown>();
-function buildBase(): string {
-  if (typeof process !== 'undefined' && process.env && process.env.YUXI_BUILD_BASE_URL) {
-    return process.env.YUXI_BUILD_BASE_URL.replace(/\/$/, '');
-  }
-  return 'https://yvxi.pages.dev';
-}
-function absoluteUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path;
-  return buildBase() + (path.startsWith('/') ? path : '/' + path);
-}
-let proxyConfigured = false;
-function ensureProxy(): void {
-  if (proxyConfigured) return;
-  proxyConfigured = true;
-  try {
-    const proxy = (typeof process !== 'undefined' && process.env && (process.env.HTTPS_PROXY || process.env.https_proxy)) || '';
-    if (proxy && typeof require !== 'undefined') {
-      // undici ships with Node 18+; calling require here keeps it out of SSR
-      // paths where fetch already works without a proxy.
-      const undici = require('undici') as typeof import('undici');
-      undici.setGlobalDispatcher(new undici.ProxyAgent(proxy));
-    }
-  } catch {
-    /* proxy init optional */
-  }
+// Production builds are deterministic and do not depend on an authenticated
+// music service. An operator can explicitly opt in to a bounded prefetch.
+function buildBase(): string | null {
+  const value = typeof process !== 'undefined' ? process.env.YUXI_BUILD_BASE_URL : undefined;
+  return value ? value.replace(/\/$/, '') : null;
 }
 export async function fetchOnce<T>(path: string): Promise<T | null> {
-  ensureProxy();
-  if (memCache.has(path)) return memCache.get(path) as T;
+  const base = buildBase();
+  if (!base) return null;
+  if (memCache.has(path)) return memCache.get(path) as T | null;
   try {
-    const res = await fetch(absoluteUrl(path), { headers: { 'user-agent': 'yuxi-build-prefetch/1.0' } });
-    if (!res.ok) return null;
-    const data = (await res.json()) as T;
+    const res = await fetch(new URL(path, base), {
+      headers: { 'user-agent': 'yuxi-build-prefetch/1.0' },
+      signal: AbortSignal.timeout(3000),
+    });
+    const data = res.ok ? await res.json() as T : null;
     memCache.set(path, data);
     return data;
   } catch {
+    memCache.set(path, null);
     return null;
   }
 }

@@ -90,13 +90,26 @@ export function setPartyName(name: string) {
 }
 
 async function post(path: string, body: Record<string, unknown> = {}): Promise<PartyRoom> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: partyId(), name: partyName(), ...body }),
-  });
-  if (!res.ok) throw new Error(`party_${res.status}`);
-  return normalizeRoom(await res.json());
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, id: partyId(), name: partyName() }),
+    });
+    const result = await res.json().catch(() => null);
+    if (res.status === 409 && result?.error === 'actor_identity_conflict' && attempt === 0) {
+      // An expired/deleted HttpOnly session cannot reclaim an old actor identity.
+      if (typeof result.actorId === 'string' && result.actorId.length > 0 && result.actorId.length <= 128) {
+        localStorage.setItem(ID_KEY, result.actorId);
+      } else {
+        localStorage.removeItem(ID_KEY);
+      }
+      continue;
+    }
+    if (!res.ok) throw new Error(`party_${res.status}`);
+    return normalizeRoom(result);
+  }
+  throw new Error('party_identity_conflict');
 }
 export async function createRoom(name: string, initial?: PartyInit): Promise<PartyRoom> {
   const hostAt = Date.now();

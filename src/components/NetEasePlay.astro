@@ -1,5 +1,6 @@
 ---
 import { neteaseThumb, neteaseHttps, fetchOnce } from '../lib/cover';
+import '../styles/music-shared.css';
 
 interface NeteaseSongLite {
   id: number;
@@ -69,9 +70,8 @@ if (kind === 'playlist') {
 // `/netease/song/<id>` route at click time. The widget never requires a
 // successful prefetch.
 const fullId = String(id);
-const fullCover = resolvedCover ? neteaseHttps(resolvedCover) : undefined;
+const fullCover = resolvedCover ? (neteaseThumb(resolvedCover, 160) ?? neteaseHttps(resolvedCover)) : undefined;
 const thumbSrc = fullCover && /^https?:\/\/p\d+\.music\.126\.net\//i.test(fullCover) ? neteaseThumb(fullCover, 64) : fullCover;
-const useBlur = fullCover && !/^https?:\/\/p\d+\.music\.126\.net\//i.test(fullCover);
 const fallbackTrackId = initialTrackId ?? (kind === 'song' ? fullId : undefined);
 
 const displayKicker = kicker ?? (kind === 'playlist' ? '网易云歌单' : '网易云单曲');
@@ -94,8 +94,8 @@ const displaySubtitle = resolvedSubtitle ?? (kind === 'playlist' ? '点击播放
   <span class="yp-netease-widget-cover">
     {fullCover ? (
       <>
-        <img class="yp-prog-thumb" src={thumbSrc} alt="" aria-hidden={true} data-loaded="0" />
-        <img class="yp-prog-full" src={fullCover} alt="" data-load-prog />
+        <img loading="lazy" decoding="async" width="64" height="64" class="yp-prog-thumb" src={thumbSrc} alt="" aria-hidden={true} data-loaded="0" />
+        <img loading="lazy" decoding="async" width="160" height="160" class="yp-prog-full" src={fullCover} alt="" data-load-prog />
       </>
     ) : (
       <span class="yp-netease-widget-cover-fallback"></span>
@@ -114,53 +114,6 @@ const displaySubtitle = resolvedSubtitle ?? (kind === 'playlist' ? '点击播放
 </button>
 
 <script>
-  // Wire click → play. The button carries all data needed to enqueue a fresh
-  // song/playlist in the persistent player without any extra network round-trip
-  // on click for the songs whose metadata we baked in at build time.
-  function wireNetEasePlay(root: ParentNode = document) {
-    const widgets = root.querySelectorAll<HTMLButtonElement>('[data-netease-play]');
-    if (!widgets.length) return;
-    // Lazy-load the player if needed; bindings.ts already initialises the
-    // singleton at module top, so importing it is enough.
-    void import('../lib/player/bindings');
-    widgets.forEach((btn) => {
-      if (btn.dataset.wired === '1') return;
-      btn.dataset.wired = '1';
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const kind = btn.dataset.kind ?? 'playlist';
-        const id = btn.dataset.id ?? '';
-        if (!id) return;
-        // Force the sheet open so the user sees the player.
-        try {
-          const mod = await import('../lib/player/store');
-          const player = mod.getPlayer();
-          await player.init();
-          if (kind === 'playlist') {
-            await player.loadNeteasePlaylist(id);
-            if (player.getSnapshot().expand === 'mini') player.setExpand('sheet');
-            void player.play();
-          } else {
-            // song — pop it onto the queue and play immediately.
-            player.playNeteaseSong({
-              id,
-              title: btn.dataset.title ?? '',
-              artist: btn.dataset.subtitle ?? '',
-              coverUrl: btn.dataset.cover ?? undefined,
-            });
-          }
-        } catch (err) {
-          console.error('NetEase widget play failed', err);
-        }
-      });
-    });
-  }
-
-  // Persistent shell sits in transition:persist, so view transitions must
-  // re-wire on swap too.
-  document.addEventListener('astro:page-load', () => wireNetEasePlay(document));
-  wireNetEasePlay(document);
-
   // Spring the cover from blurry thumb to full res once loaded.
   function wireProgCovers(root: ParentNode = document) {
     root.querySelectorAll<HTMLImageElement>('.yp-prog-full[data-load-prog]').forEach((img) => {

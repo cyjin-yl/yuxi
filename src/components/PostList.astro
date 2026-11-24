@@ -6,6 +6,7 @@ interface PostItem {
     description?: string;
     date: Date;
     tags?: string[];
+    backfilledAt?: Date;
   };
 }
 
@@ -21,6 +22,7 @@ function formatDate(date: Date) {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    timeZone: 'Asia/Shanghai',
   });
 }
 ---
@@ -36,6 +38,7 @@ function formatDate(date: Date) {
             <div class="post-item-title">{post.data.title}</div>
             <div class="post-item-meta">
               <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+              {post.data.backfilledAt && <span class="post-backfill-label">历史补写</span>}
               {post.data.tags?.map((tag) => (
                 <span class="tag">{tag}</span>
               ))}

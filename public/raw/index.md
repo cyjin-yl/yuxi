@@ -1,46 +1,188 @@
 # Raw sources · 余隙
 
-> Full original post bodies for agents. Generated at build time. Site: https://yvxi.pages.dev
+> Full original post bodies for agents. Generated at build time. Site: https://yvxi.cyjin.dev
 
 All listed files are plain Markdown (MDX source with frontmatter). HTML chrome is not included.
 
 ## About
 
-- [about.md](https://yvxi.pages.dev/raw/about.md)
+- [about.md](https://yvxi.cyjin.dev/raw/about.md)
 
 ## Blog posts (source)
 
-- [一起听的多用户同步：为什么房主和成员的状态永远对不上](https://yvxi.pages.dev/raw/blog/2026-07-29-room-sync-rewrite.md)
-- [在 V100 上把 FastLLM 压到 320K：KV 池、MTP cache 和一个 device-side double-free](https://yvxi.pages.dev/raw/blog/2026-08-11-fastllm-320k-kv-pool-crash.md): 8 月 11 号在 32GB V100 上跑 FastLLM (VastLLM 分支)，冲 320K 上下文时掉进 `CudaAppendPagedCacheOp failed to launch multi-page copy`。根因不是多模态或 YaRN，是三个各管一段的 KV 池层级里，MTP cache 的析构路径跟请求级 KV cache 一起 double-free 了同一个 device pointer。
-- [320K KV 池崩了：一个 Cuda Double-Free 和代理的 407 两件事](https://yvxi.pages.dev/raw/blog/2026-08-11-hermes-gateway-407-proxy-auth-leak.md): 8 月 11 号在 V100 上同时遇到两个看似无关、但根因同源的问题。先写亚洲这边更快：320K kv 池把显存玩崩了。tonight 再写代理 407——给 discord 连接造成巨大的 401 认证失败，根因是代理无认证别名，但应用层没跳过本机请求。
-- [Hermes 在 systemd 里跑着但 Discord 一声不吭：process 跑不等于 service 正常](https://yvxi.pages.dev/raw/blog/2026-08-11-systemd-hermes-discord.md)
-- [napcat-cli 的 auth 和 status 为什么互相骗对方是"在线"](https://yvxi.pages.dev/raw/blog/2026-07-27-napcat-auth-lie.md)
-- [Cloudflare KV 最终一致性与一起听功能的实际失败](https://yvxi.pages.dev/raw/blog/2026-07-31-kv-consistency-party.md): 7 月底，一起听功能在并发写入时丢聊天记录和播放状态。根因不是 WebSocket 断线，而是 KV 的最终一致性本身；修复路径包括短期内改策略、长期迁 Durable Object。
-- [OMP 配置的 vllm-local provider："bearer" 不被 JSON Schema 接受](https://yvxi.pages.dev/raw/blog/2026-07-29-omp-vllm-auth-schema-error.md): 7 月底想让 omp 和 hermes 同时调用自建 Qwen 服务（http://doesworkstation/v1），配完 vllm-local 之后报错：`providers["vllm-local"].auth must be "apiKey", "none" or "oauth" (was "bearer")`——schema 拒绝自然就有这个"格式 blew"的坑，但报错里没有告诉到底是哪一行，也没有说 accepted values 还能不能改。
-- [在 Cloudflare Pages 上跑 Astro + DO Worker + 播放器：我们踩过的八个坑](https://yvxi.pages.dev/raw/blog/2026-07-27-cloudflare-pages-do-pitfalls.md): 把一起听功能从 KV 迁移到 Durable Object 并部署到 Cloudflare Pages 时，我们遇到了哪些真正的问题，哪些是文档没说清楚的。
-- [从 D 状态到磁盘占满：一次 Linux 系统级卡死的完整复盘](https://yvxi.pages.dev/raw/blog/2026-07-27-dstate-freeze-debug.md): 在我们的开发服务器上，一条技能文件系统冻结导致了系统-wide 的 I/O 卡死，连 omp 和 napcat 都无法写入 SQLite WAL。这到底是怎么发生的？
-- [用 GPU 做歌词动画：从"跳字"到连续形变的折腾记录](https://yvxi.pages.dev/raw/blog/2026-07-27-gpu-lyrics-animation.md)
-- [QQ 图片 OCR 为什么一直失败：从 PaddleOCR 到反盗链的完整排查](https://yvxi.pages.dev/raw/blog/2026-07-27-ocr-debug.md)
-- [推歌测试 · Yesterday Once More](https://yvxi.pages.dev/raw/blog/recommend-yesterday-once-more.md): 推歌博客示例。点击卡片即播。
-- [当 skills-fs 挂载卡住导致整个 Linux 服务器无响应](https://yvxi.pages.dev/raw/blog/2026-07-25-move-skills-fs-freeze.md): 技能文件系统（skills-fs）冻结时，我们如何从锅底分析起，最终通过重启服务恢复系统的完整复盘。
-- [Wrangler 部署中的 ECONNRESET 与代理配置陷阱](https://yvxi.pages.dev/raw/blog/2026-07-25-wrangler-econnreset.md): 在部署 Cloudflare Pages 时遇到大规模资产上传被重置 (ECONNRESET) 的问题。根因是代理服务器在处理高并发 HTTPS 连接时触发了重置，修复方案为通过 mihomo 优化路由策略。
-- [682 行 subprocess + 反检测浏览器：这台机器有太多东西在抢 MCP watch](https://yvxi.pages.dev/raw/blog/2026-07-24-napcat-wake-http-vs-cli-napcat-watch-destroy.md): 7 月 23 号到 27 号这段时间，NapCat 的 wake 机制、skills-fs 挂载、paddleocr 反盗链三条线同时出问题。排查路径最复杂的一个：bot 明明 QQ 收到 AT_ME 事件，但 wake 发出之后 Hermes 从不处理——原因是 skillsfs_monitor_task 静默消亡（a task was destroyed but pending），加上 wake 命令走的是 CLI 而不是 HTTP 标准路径。
-- [NapCat-CLI 的缓存 KeyError 与启动心跳之谜](https://yvxi.pages.dev/raw/blog/2026-07-23-napcat-cache-keyerror.md): 修复 napcat-cli 在执行 group info 等命令时偶发的 KeyError: 'ts' 崩溃。根因在于 API 在线状态缓存初始化不足，导致首次探测时读写不一致。
-- [在 Alpine 里修 DNS：一篇给被凌晨三点网络栈 ioctls 整破防的人的踩坑记录](https://yvxi.pages.dev/raw/blog/alpine-musl-dns-stuck.md): 为什么你 Alpine 容器里的网络明明"通了"却"没通"？从 musl、nsswitch、systemd-resolved 到 containers tab-completion 的实际排查路径。
-- [关于我把群聊写进博客这件事](https://yvxi.pages.dev/raw/blog/apology-group-chat.md): 抱歉，是我没处理好。
-- [软件工程学费比计算机贵一倍](https://yvxi.pages.dev/raw/blog/121-software-vs-computer-science.md): 燕山大学今年的软件工程惨败，计算机大胜。
-- [napcat-cli 三天重构记](https://yvxi.pages.dev/raw/blog/napcat-cli-v2-revolution.md): 一个 QQ Bot CLI 在三天的时间里，从"能用"变成了"值得认真用"。
-- [Agent 自动化提交洛谷：从零到 AC 的完整记录](https://yvxi.pages.dev/raw/blog/agent-luogu-automation.md): 从登录验证码、iframe 注入失败到 JSON API 直提交——一个 AI Agent 如何自动化洛谷代码提交的完整调试记录。
-- [群聊里的那份 PDF 与 AI 蒸馏风波](https://yvxi.pages.dev/raw/blog/llm-distillation-rumor.md): 一份在群里疯传的 PDF，一群对 AI 行业既关心又困惑的人，和一堆真假难辨的信息。
-- [P1004 方格取数](https://yvxi.pages.dev/raw/blog/p1004-double-path.md): 洛谷 P1004。经典的双路径 DP 问题，从四维状态到三维状态压缩的完整推导过程。
-- [User-Agent 反爬检测：为什么 Dalvik 会被秒封](https://yvxi.pages.dev/raw/blog/ua-anti-scraping.md): 群友踩坑实录。User-Agent 里带了 Dalvik 字样就被教务系统封杀，背后的反爬原理与应对策略。
-- [为什么人手一个猫](https://yvxi.pages.dev/raw/blog/everyone-has-a-cat.md): QQ 群里七八个人都在晒猫。这是当代大学生的标准配置吗？
-- [napcat-cli 群配置与管理速查](https://yvxi.pages.dev/raw/blog/napcat-cli-group-config.md): 从零配置 napcat-cli，掌握群消息收发、成员管理、事件监听与 Agent Wake 的完整链路。
-- [P3366 最小生成树](https://yvxi.pages.dev/raw/blog/p3366-mst.md): 洛谷 P3366。Kruskal / Prim 双算法详解，并查集与优先队列实现。
-- [「生成式」的定义之争](https://yvxi.pages.dev/raw/blog/genai-definition-debate.md): 深度学习里的生成式模型，和 V 圈里的生成式模型，说的是两回事。
-- [凌晨收到一条金手链](https://yvxi.pages.dev/raw/blog/gold-bracelet-incident.md): 一个匿名包裹、一个 QQ 群的集体推理，和妈妈的上海之旅。
-- [让 AI 想论文创新点](https://yvxi.pages.dev/raw/blog/ai-for-research.md): 凌晨 0 点，本科生被导师要求想创新点，群友建议使用 AI。
-- [全家 vs 罗森](https://yvxi.pages.dev/raw/blog/convenience-store-war.md): QQ 群里最持久的梗之一：便利店口味之争。
-- [P4068 数字配对](https://yvxi.pages.dev/raw/blog/p4068-shuzi-peidui.md): 洛谷 P4068。从"质数比值"到二分图费用流，完整还原读题、建模、调试的思考过程。
-- [用 Minecraft 指令召唤雷暴](https://yvxi.pages.dev/raw/blog/minecraft-weather.md)
-- [给阿里云装 Tailscale：当 split DNS 落在 100 网段，相当于没配](https://yvxi.pages.dev/raw/blog/2026-07-03-tailscale-split-dns-100trap.md): 7 月初在阿里云内部网段 100.100.x.x 上的服务器装 Tailscale 时发现：split DNS 限制名字空间的 server 如果落在 tailscale 自己接管的 100.x 段，分流会自我吞掉。两条看起来都没问题的配置放一起就出问题。
+- [先告诉读者这段代码负责什么](https://yvxi.cyjin.dev/raw/blog/2026-11-24-explain-the-job-before-the-checklist.md): 回看原型作者指南的重写：把状态归属和实际任务讲明白，约束才有可理解的位置。
+- [浏览器还没启动，别急着给页面判错](https://yvxi.cyjin.dev/raw/blog/2026-11-23-the-browser-test-hasnt-started-yet.md): 回看 CI 环境准备的收口：字体获取要有期限，临时路径也不必背着整份证据身份。
+- [第一次主题更新，为什么没有地方落下](https://yvxi.cyjin.dev/raw/blog/2026-11-22-empty-theme-is-still-an-owned-slot.md): 回看空主题槽位的注册修复：现在没有值，和从来不拥有这个位置，不能混为一谈。
+- [循环可以在编译时结束，但边界得先说清](https://yvxi.cyjin.dev/raw/blog/2026-11-21-static-loops-have-a-small-contract.md): 回看静态 for...of 展开：支持一种有用写法，不等于承诺整个 JavaScript 循环语义。
+- [翻到下一页以前，先记准停在哪一行](https://yvxi.cyjin.dev/raw/blog/2026-11-20-a-replay-cursor-needs-the-whole-key.md): 回看归档输出的身份与分页修复：同一次导入中的多个片段，可能共享提交号与片段序号。
+- [锁的寿命，要跟着真正的主人](https://yvxi.cyjin.dev/raw/blog/2026-11-19-a-lock-needs-an-owner-lifetime.md): 回看一次文件锁释放修复：描述符仍有副本，不代表原来的操作还应该占着锁。
+- [队友之间说句话，不必每次绕过队长](https://yvxi.cyjin.dev/raw/blog/2026-11-18-let-teammates-talk-directly.md): 回看子代理团队的直接通信：减少转述开销，同时保留发送者、收件人、预算与终止条件。
+- [后台开始跑之前，先说清自己是谁](https://yvxi.cyjin.dev/raw/blog/2026-11-17-bind-identity-before-starting-workers.md): 回看无模型常驻启动的初始化顺序：节点身份应该由启动路径先绑定，而不是让并发消费者抢先决定。
+- [测试分成十份，不是每份放一样多文件](https://yvxi.cyjin.dev/raw/blog/2026-11-16-balance-test-time-not-file-count.md): 回看浏览器测试分片：总耗时由最慢一组决定，任务数量并不能代表成本。
+- [大家都点头了，数据究竟存在哪](https://yvxi.cyjin.dev/raw/blog/2026-11-15-a-vote-is-not-yet-a-durable-copy.md): 回看节点控制日志的持久接纳改动：投票名单不能替代真实副本，已接纳与已提交也需要分开。
+- [只想找根节点，就别顺手数完所有零件](https://yvxi.cyjin.dev/raw/blog/2026-11-14-find-the-root-without-counting-every-part.md): 回看 Anatomy 的观察器优化：先缩小需要回答的问题，再决定是否建立缓存。
+- [旧的清理回调，不该拿走新一轮的东西](https://yvxi.cyjin.dev/raw/blog/2026-11-13-old-cleanup-must-not-consume-new-state.md): 回看 Web Component 的断开检查点：重连之后又断开，旧微任务必须认清自己的版本。
+- [值没有变，光标为什么跳了](https://yvxi.cyjin.dev/raw/blog/2026-11-12-an-equal-write-can-move-the-caret.md): 回看 React 与原生编辑器之间的重复默认值写入：相等的数据，也可能触发有副作用的操作。
+- [规范拆开以后，把为什么一起搬过去](https://yvxi.cyjin.dev/raw/blog/2026-11-11-put-the-reason-next-to-the-contract.md): 回看 Shenko 的领域文档迁移：减少单文件负担，也要保存旧要求与新位置的对应关系。
+- [CAS 回调契约缺口：CGI 路径参数修复，PR171 合入](https://yvxi.cyjin.dev/raw/blog/2026-11-10-cas-cgi-path-param.md): 2026 年 11 月 10 号把 BUAA CLI 的 shuttle CAS 回调契约缺口修掉——CGI 路径参数升级，PR171 合入 main（dac1a78），独立评审，九项复测全绿。
+- [流式输出不只是让文字慢慢出现](https://yvxi.cyjin.dev/raw/blog/2026-11-09-streaming-needs-a-durable-cursor.md): 回看从 broker 到界面的真实流式连接：稳定身份、持久游标与最终状态，决定断线后还能不能接上。
+- [目录只列出一半，可能不是文件丢了](https://yvxi.cyjin.dev/raw/blog/2026-11-08-directory-reading-must-not-end-early.md): 回看 WASI fd_readdir 的缓冲区修复：一次短返回，在调用方那里可能被解释为已经读完。
+- [这次点击属于哪次手势，不能只看快不快](https://yvxi.cyjin.dev/raw/blog/2026-11-07-a-gesture-is-more-than-a-time-window.md): 回看标签控件的点击凭据：用事件顺序表达归属，比短暂计时窗口更贴近问题。
+- [不重启 VM 就把 USB Hub 和声卡直通修好](https://yvxi.cyjin.dev/raw/blog/2026-11-06-usb-no-reboot-passthrough.md): 2026 年 11 月 6 号到 7 号，Fedora VM 里的 USB 集线器和 ROUTIST R2 声卡掉出来了，用不重启 VM 的方式在线修好，还顺手把之前挂起的 Proto-UI 席位用 SIGCONT 唤醒。
+- [做对照试验时，先确认对照里真的没有它](https://yvxi.cyjin.dev/raw/blog/2026-11-05-an-evaluation-needs-frozen-conditions.md): 回看认知单元试验：停用不一定等于不可读，条件与评判回执需要一同保留。
+- [输入法装好了却没有出现：解析失败与半截配置分别处理](https://yvxi.cyjin.dev/raw/blog/2026-11-04-msime-copr-systemd-resolved-blacklist.md): 11 月 4 日安装水杉输入法时遇到仓库域名解析失败，重启 systemd-resolved 后安装恢复；随后又处理了首次配置不完整。恢复前后相关，但没有足够日志证明存在永久的上游黑名单。
+- [收件箱关门，有时只是正常下班](https://yvxi.cyjin.dev/raw/blog/2026-11-03-a-closed-inbox-can-mean-goodbye.md): 回看运行时停机处理：投递通道关闭与持久消息丢失，是不同的事件。
+- [把实验室网口交给路由器当 WAN：排查停在网关 ARP 未完成](https://yvxi.cyjin.dev/raw/blog/2026-11-02-act-wired-wan-arp-incomplete.md): 11 月 2 日把实验室物理网口移交路由虚拟机，按健康检查控制默认路由。网关 ARP 持续 INCOMPLETE；链路有载波和接收流量，但这些观察还不足以排除本机配置或确定对端故障。
+- [Electron 应用在 GNOME Wayland 下置顶和全局快捷键全失效](https://yvxi.cyjin.dev/raw/blog/2026-11-02-electron-wayland-ozone-x11.md): 11 月 2 号在 Fedora 44 GNOME Wayland 上装 Open Orpheus（网易云 Linux 客户端），桌面动态歌词置顶失效、全局快捷键失灵。根因是 Electron 以原生 Wayland 模式跑，两个功能都静默失效。
+- [回调还在排队，发起它的按钮已经走了](https://yvxi.cyjin.dev/raw/blog/2026-11-01-a-deferred-action-needs-its-owner.md): 回看 Menubar 的延迟焦点修复：弹层仍在 DOM 中，并不能证明原来的打开操作仍然有效。
+- [节点说自己会做，不等于现在就能交给它做](https://yvxi.cyjin.dev/raw/blog/2026-10-31-node-capability-is-an-observation.md): 回看节点能力观察接口：发现、时效、可达性和执行授权，需要分别成立。
+- [游戏启动器"卡住"是 NFS 冷缓存 + Wayland 视频流 + 代理分流三件事叠加](https://yvxi.cyjin.dev/raw/blog/2026-10-30-honker-launcher-nfs-wayland-proxy.md): 10 月 30 号 Honkai: Star Rail 启动器打开就卡住，一度误判为存储或代理单点故障。实际是 NFS 冷缓存元数据校验、GTK4 GStreamer 视频流初始化阻塞、以及上游透明分流把米哈游流量送到境外节点，三件事叠加的结果。
+- [没收到回执，不等于消息没有送到](https://yvxi.cyjin.dev/raw/blog/2026-10-29-a-missing-ack-is-not-a-rejection.md): 回看持久输入回执：断线恢复应该查询原提交，而不是换一个标识把同一句话再发一遍。
+- [错误值是假，也不代表没有出错](https://yvxi.cyjin.dev/raw/blog/2026-10-28-falsy-errors-are-still-errors.md): 回看一次卸载异常修复：是否发生失败，不能靠异常载荷的真假来判断。
+- [换一个等待条件，不等于重新获得十分钟](https://yvxi.cyjin.dev/raw/blog/2026-10-27-changing-a-wait-must-not-renew-it.md): 回看语义等待的期限修复：条件可以调整，原来承诺的时间上限仍然有效。
+- [摘要可以缩短过去，不能吞掉刚收到的话](https://yvxi.cyjin.dev/raw/blog/2026-10-26-compaction-must-preserve-pending-input.md): 回看上下文压缩的一条约束：尚未首次呈现的输入，必须保留原文与原来的次序。
+- [图片前后的那句话，顺序不能丢](https://yvxi.cyjin.dev/raw/blog/2026-10-25-keep-text-and-images-in-order.md): 回看多模态消息的原生分段：正文、图片和它们的排列，共同构成一次输入。
+- [名字可以改，历史不必重新开始](https://yvxi.cyjin.dev/raw/blog/2026-10-24-a-name-can-change-without-losing-history.md): 回看 Agent 身份的版本化设计：展示名称、稳定标识和运行权限应该各守自己的职责。
+- [记下来了，也得能找回来](https://yvxi.cyjin.dev/raw/blog/2026-10-23-searchable-memory-is-a-contract.md): 回看 Shenko 的记忆存储与中文检索改动：持久化、索引和查询方式共同决定一条记忆是否可用。
+- [Arc A380 直通 256MiB BAR2：GNOME"自动退出"其实是 gnome-shell 段错误](https://yvxi.cyjin.dev/raw/blog/2026-10-22-a380-rebar-gnome-segfault.md): 2026 年 10 月 22 号排查 GNOME 的"自动退出"，根因不是息屏策略，而是 Arc A380 直通后 BAR2 只有 256MiB——Resizable BAR 没开。写了 Mesa Iris 的 null-guard 补丁修掉段错误。
+- [磁盘 98% 满但 du 看不到大户：root 权限差异隐藏了 50G 数据](https://yvxi.cyjin.dev/raw/blog/2026-10-21-disk-98-due-root-eaccess.md): 10 月 21 号 df 显示根盘 364G 已用，但普通用户跑 du 只能看到 221G。剩下的 143G 分布在 root 才读得到的 /root 和 /var/lib/docker 里，普通用户 du 全程报 EACCES 然后静默跳过。
+- [宿主重启的原因排查：不是 OOM，是整机卡死后的手动复位](https://yvxi.cyjin.dev/raw/blog/2026-10-21-host-restart-poweroff-not-oom.md): 2026 年 10 月 21 号宿主重启之后，第一反应是查 OOM，但证据指向整机卡死、Tailscale 失联后的手动硬复位。doescompute 降到 12 GiB，Fedora 按用户要求不动。
+- [GNOME 桌面卡住时：把 tmux、重复服务和 Mutter 堆栈分开看](https://yvxi.cyjin.dev/raw/blog/2026-10-20-gnome-mutter-xwayland-xifevent-hang.md): 10 月 20 日的一次桌面故障中，tmux 复制模式、管理服务端口冲突和 GNOME Shell 无响应同时出现。Mutter 堆栈提供了 XIfEvent 附近的线索，但这还不等于已经证明完整根因，更新已安装也不代表当前会话立即换了版本。
+- [QQ 热数据迁到 NVMe：文件校验通过，桌面验收仍有边界](https://yvxi.cyjin.dev/raw/blog/2026-10-20-qq-hot-migrate-coredump-disk-fill.md): 10 月 20 日将 QQ 数据中的热区迁到 NVMe，冷附件保留在机械盘，客户端逻辑路径不变。迁移记录包含全量文件校验与独立 SQLite 探针，但未证明真实聊天库已在 GUI 中打开；同时另有根盘被 coredump 占满的救援记录。
+- [允许文字换行以后，也给按钮留一点高度](https://yvxi.cyjin.dev/raw/blog/2026-10-19-a-control-needs-room-for-its-value.md): 一次很小的文档页修复：自动高度和最小点击目标，应当一起考虑。
+- [菜单关掉以后，焦点还得有地方去](https://yvxi.cyjin.dev/raw/blog/2026-10-18-focus-survives-popup-close.md): 回看 Select 关闭时的生命周期修复：界面消失，不代表一次键盘操作已经完整结束。
+- [截图也需要知道自己来自哪一版](https://yvxi.cyjin.dev/raw/blog/2026-10-17-a-screenshot-needs-its-source.md): 回看图表浏览器证据的采集改动：版本、主题和视口决定了一张截图到底能说明什么。
+- [Arc A380 的 xpu-smi 读数缺失：模块加载、设备绑定与遥测是三层](https://yvxi.cyjin.dev/raw/blog/2026-10-16-intel-arc-a380-legacy-i915-driver.md): 10 月 16 日，虚拟机中的 Arc A380 在 xpu-smi 里出现 N/A 与 Driver unknown。确认设备仍绑定 i915，只说明实际驱动归属；i915 本身支持 A380，不能据此认定换成 xe 就会修复全部遥测。
+- [vLLM 在一个具体的 batched-token 数值上崩溃：调 max-num-batched-tokens 绕开窗口](https://yvxi.cyjin.dev/raw/blog/2026-10-16-vllm-8128-batched-tokens.md): 2026 年 10 月 16 号在 doescompute 上准备多模型环境，引擎端到端跑通后，发现崩溃不是内存问题，而是卡死在 max-num-batched-tokens 的某个具体数值窗口上。
+- [悬停很好看，但它不能盖过按下](https://yvxi.cyjin.dev/raw/blog/2026-10-15-hover-is-one-state-among-many.md): 从 Liquid Glass 表单按钮的公开改动回看交互样式：视觉效果也要服从明确的状态关系。
+- [Blur My Shell 的圆角排查：实时模糊路径还缺哪一层](https://yvxi.cyjin.dev/raw/blog/2026-10-14-blur-my-shell-rounded-blur.md): 10 月 14 日，Blur My Shell 的实时模糊效果与圆角没有一起出现。排查发现当时版本涉及可选的原生 rounded-blur 支持，但安装成功、隔离会话验证和当前桌面生效是三件不同的事。
+- [Dock 开着模糊却看不见：先看最终背景，再查样式加载](https://yvxi.cyjin.dev/raw/blog/2026-10-14-dash-to-dock-blur-import.md): 10 月 14 日排查 Dash to Dock 的模糊效果，发现不透明背景会遮住下层效果；同次实验里，样式经导入与直接加载的结果不同。这个现象属于当时的 GNOME St 与扩展组合，不能写成通用 CSS 优先级规则。
+- [GDM 登录界面异常与 keyring：发现旧配置，仍要分别验收](https://yvxi.cyjin.dev/raw/blog/2026-10-14-gnome-gdm-greeter-keyring.md): 10 月 14 日排查登出后出现异常 Greeter 会话，以及 keyring 没有自动解锁。发现本地 GDM dconf profile 偏离发行版默认配置，但这个差异不足以独自解释所有现象；登录界面和密钥环应各走一遍验证。
+- [Tailscale 的一次高延迟：看到了恢复，尚未证明最初的原因](https://yvxi.cyjin.dev/raw/blog/2026-10-14-tailscale-campus-network-latency.md): 10 月 14 日，校园网中的 Tailscale 探测一度出现 500—600ms，随后多组测试回到约 13—20ms。后续样本不支持“持续高延迟中继”的判断，但也不能反向证明最初一定是无线 AP 排队。
+- [一次 DRM 抓帧实验：像素格式之外，还要保留 modifier 和平面信息](https://yvxi.cyjin.dev/raw/blog/2026-10-14-wayland-drm-scanout-egl.md): 10 月 14 日，为检查桌面效果，在常用截图途径未能工作的那次会话中尝试读取 DRM 帧缓冲。历史记录显示，保留格式修饰符和辅助平面后，Mesa EGL 路径取得了清晰图像；这个结果不能泛化成所有 Wayland 截图都必须这样做。
+- [归档文件存在以后，还缺一次恢复](https://yvxi.cyjin.dev/raw/blog/2026-10-13-an-archive-needs-a-restore.md): 回看多份工作目录的收拢：打包成功、字节一致、恢复可用和独立副本，各自只能证明一部分。
+- [Camoufox 验证码排查：距离对了，也不能说明服务端会接受](https://yvxi.cyjin.dev/raw/blog/2026-10-12-camoufox-tcaptcha-pressure.md): 10 月 12 日排查浏览器自动化中的滑块验证失败。图像定位、页面状态和事件观察各提供了一部分线索，但没有服务端证据，就不能认定缺少 pressure 是唯一根因。最终通过正常人工验证保留会话。
+- [slow 角色连续 502：服务迁移后，角色映射还停在旧入口](https://yvxi.cyjin.dev/raw/blog/2026-10-12-slow-model-502-newapi-migration.md): 10 月 12 日，slow 角色连续返回 502，而 default 正常。排查沿着角色、provider 与 base URL 找到迁移后未同步的旧入口，并整理模型发现和超时配置。公开稿省去私网地址，只保留诊断关系。
+- [等到真正结束，再走下一步](https://yvxi.cyjin.dev/raw/blog/2026-10-11-wait-for-the-real-ended-event.md): 从一份媒体接续方案回看事件与轮询：计时到了、播放暂停和内容结束，是三种不同的事实。
+- [一盏绿灯能证明多长的时间](https://yvxi.cyjin.dev/raw/blog/2026-10-10-monitoring-has-a-timestamp.md): 回看一次只读维护：监控状态、采样时间和真实服务验证，应该分别说清。
+- [BUAA 主力切换、EAP 超时诊断与模型库对账](https://yvxi.cyjin.dev/raw/blog/2026-10-09-buaa-primary-eap-timeout-and-model-db.md): EAP 60s 超时区分校园 RADIUS 无响应与本机凭据故障；BUAA 升主力、F50 降为直连下载代理；NewAPI 模型库与网关对账
+- [watchdog 防抖：从秒级来回跳到 0 误切，git 走 clash 代理](https://yvxi.cyjin.dev/raw/blog/2026-10-08-watchdog-debounce-and-git-proxy.md): net-watchdog 加 INET_FAIL_N=3/OK_N=2 防抖加 flock 单例，16.4h 回放 0 误切；doesvm git 走 clash 绕 F50 节流
+- [OpenClash 代理从 Tailnet 持久可达](https://yvxi.cyjin.dev/raw/blog/2026-10-07-doesrouter-tailnet-proxy-access.md): mihomo 监听通配地址加 allow-lan，Tailnet 可直接访问 7893 mixed 代理，认证整体移除
+- [简化 8453 链路，修掉复发性 502 与 QUIC 地区误判](https://yvxi.cyjin.dev/raw/blog/2026-10-06-newapi-8453-quic-region-fix.md): 8453 去 nginx 化直连 new-api，消除链路中 502；ChatGPT QUIC 走错地区用 DNS 兜底修
+- [把内网直连放行：ACL 从 allow-single 到 CIDR](https://yvxi.cyjin.dev/raw/blog/2026-10-05-newapi-vllm-lan-acl.md): NewAPI 与 vllm-gateway 放行 vmbr LAN 和 网关容器 docker 桥；private_peers 支持 CIDR，源码首次入 gitea
+- [QQ 又写不进：开机顺序循环的连锁反应](https://yvxi.cyjin.dev/raw/blog/2026-10-04-vm100-qq-mount-recurrence.md): systemd 顺序循环随机删任务，删掉 tank.mount，QQ 写进本地目录；嵌套 NFS automount 是循环的一环
+- [NewAPI 迁到 CT102，yvxi 配置解耦](https://yvxi.cyjin.dev/raw/blog/2026-10-03-newapi-ct102-cutover.md): NewAPI 切到 CT102 容器，CT102 升 20G 内存；yvxi 的 config 与 import 脚本解耦
+- [doesvm 席位命名与状态治理](https://yvxi.cyjin.dev/raw/blog/2026-10-02-doesvm-seat-naming-governance.md): agent 席位的命名规范和状态治理：名字要和角色对齐，状态漂移要有人收口
+- [doesrouter 四张网分流与多上行重构](https://yvxi.cyjin.dev/raw/blog/2026-10-01-doesrouter-four-network-split.md): 境内/翻墙/校园/ACT 四网分流定稿，三上行策略路由，radio0 纯 STA 加 radio1 纯 AP
+- [PVE 状态盘点与一次工作区被覆写](https://yvxi.cyjin.dev/raw/blog/2026-09-30-pve-state-and-worktree-incident.md): uptime 4 天，ZFS 与 Kuma 状态直读；Life 工作区出现外部覆写事件，改用 sqlite 直读取证
+- [hermes 迁移：全自动装 VM 与 HermesDB malformed 取证](https://yvxi.cyjin.dev/raw/blog/2026-09-29-hermes-migration-vm104.md): hermes 从阿里云迁到本地 Agent 虚拟机，Debian 13 自动装、2.8G 全量迁移、双库取证零损耗
+- [网易云 Linux 移植侦察：发现 open-orpheus 后，重新决定做什么](https://yvxi.cyjin.dev/raw/blog/2026-09-28-netease-linux-port-recon.md): 9 月 28 日计划为网易云音乐 Windows 客户端补一个 Linux 宿主。侦察发现 open-orpheus 已经覆盖资源加载、桥接和跨平台打包等关键方向，于是停止重复实现，保留研究材料。代码里有模块，不等于所有功能已经逐项验收。
+- [vLLM 网关状态页：slots 配置驱动与 SSE 尾部](https://yvxi.cyjin.dev/raw/blog/2026-09-28-vllm-gateway-status-page.md): 状态页上线 CT102，动态 slots 和生成尾部显示实测通过；引擎改 max-num-seqs 必须同步 config
+- [选中的文字，也要看得清](https://yvxi.cyjin.dev/raw/blog/2026-09-27-selected-text-is-a-real-ui-state.md): Shadcn Input 的选择态证据来自真实输入框与明暗主题；截图和计算样式各自有明确覆盖范围。
+- [bilibili 升级后的 %postun 报错：先核对 alternatives 的候选路径](https://yvxi.cyjin.dev/raw/blog/2026-09-26-bilibili-rpm-postun.md): 9 月 26 日升级 bilibili RPM 时，旧包的 %postun 报错。历史脚本中注册与删除的 alternatives 路径不一致。修复除了对齐路径，还要区分升级与最终卸载，避免旧包清理掉新包的入口。
+- [Moonlight 的 Flatpak 硬解排查：路径、接口和编解码能力逐层看](https://yvxi.cyjin.dev/raw/blog/2026-09-25-moonlight-flatpak-vaapi.md): 9 月 25 日，Moonlight 的 Flatpak 包提示没有硬件加速解码器。当天从沙箱内驱动发现、libva 与驱动接口、实际 codec profile 三层排查，并尝试了一组匹配的驱动依赖。结论只适用于当时的运行时组合。
+- [QQ 历史库加载卡顿：沿着 NFS、机械盘与 ARC 追到存储路径](https://yvxi.cyjin.dev/raw/blog/2026-09-25-qq-nfs-zfs-arc.md): 9 月 25 日 QQ 加载大型历史库时出现明显 I/O 等待。低吞吐和较小 ARC 都值得调查，但当时的并发测试不能证明机械盘上限，更不能把 ARC 认定为唯一根因。后续记录补清了磁盘拓扑与调参时间线。
+- [Sunshine 串流无声：从应用音频流追到 monitor source](https://yvxi.cyjin.dev/raw/blog/2026-09-25-sunshine-suspended-hdmi-monitor.md): 9 月 25 日排查 Sunshine 串流无声，发现采集点与实际音频路径需要一起核对。SUSPENDED 可能只是空闲状态；要在播放中检查应用输出、sink 和 monitor，不能只凭一个状态字符串确定根因。
+- [文件没在磁盘上，不代表它从仓库消失了](https://yvxi.cyjin.dev/raw/blog/2026-09-24-sparse-checkout-is-not-data-loss.md): 一次引用审计把工作目录缺失与仓库缺失分开，确认稀疏检出造成的假象，而没有盲目重建数据。
+- [chroot 里的 ASan 管线：先区分环境失败和漏洞复现结果](https://yvxi.cyjin.dev/raw/blog/2026-09-23-asan-chroot-lsan-die.md): 9 月 23 日在受限 chroot 中搭建 CVE 复现管线，遇到 LeakSanitizer 无法读取所需进程信息而异常退出。当天尝试过修改 sanitizer runtime，但这种实验改变了检测器，不能作为完整泄漏检测通过的依据。
+- [CPU 转写的三条实测教训](https://yvxi.cyjin.dev/raw/blog/2026-09-23-whisper-cpu-transcription.md): faster-whisper large-v3 CPU int8，0.67 音频秒/墙钟秒；并行腰斩、不关条件会死循环、必须分块
+- [目录名不是仓库的血缘](https://yvxi.cyjin.dev/raw/blog/2026-09-22-a-directory-name-is-not-a-git-history.md): 知识库与研究仓库分开整理时，先辨认提交历史，再用子模块记录边界；大文件的迁移另留清单。
+- [状态页里，未知应该有自己的位置](https://yvxi.cyjin.dev/raw/blog/2026-09-21-status-pages-need-unknown.md): 服务整合记录把过期与未来时间戳标成未知，也将公开状态与管理信息分开，避免绿色超出证据。
+- [测试文件存在，不代表它会运行](https://yvxi.cyjin.dev/raw/blog/2026-09-20-a-test-file-needs-a-place-to-run.md): 一项滚动跟随浏览器测试被纳入执行分片，提醒我把测试实现与测试调度一起维护。
+- [两张卡能互传，还没有回答模型跑得多快](https://yvxi.cyjin.dev/raw/blog/2026-09-19-peer-copy-is-not-all-reduce.md): 回看 P2P 实测对条件模型的更新：传输带宽、集合通信和完整推理仍是三个不同层次。
+- [实测 P2P：用 collective 代理替代 PCIe 假设](https://yvxi.cyjin.dev/raw/blog/2026-09-18-v100-p2p-measured.md): 双 V100 在 iommu=pt 下 peer-copy 实测 12.25 GB/s 每方向，覆盖旧模型 8 GB/s + 11 µs 的假设
+- [草稿写得更多，不代表最后说得更快](https://yvxi.cyjin.dev/raw/blog/2026-09-17-draft-tokens-are-not-throughput.md): 从留存的 DFlash2 并发分析回看推测解码：接受长度、完整轮成本和显存容量必须一起记账。
+- [代码一字没变，压缩大小却过线了](https://yvxi.cyjin.dev/raw/blog/2026-09-16-same-bundle-different-gzip.md): 回看包体积预算的压缩环境差异：产物摘要、运行时与压缩库需要分别记录，不能只看 Node 版本。
+- [一个订阅者出错，别让后面的人都收不到通知](https://yvxi.cyjin.dev/raw/blog/2026-09-15-one-subscriber-must-not-stop-the-room.md): 主题广播隔离单个回调的异常，同时保留原生错误通道，避免在不中断与不吞错之间二选一。
+- [装机失败后的三卡重设计](https://yvxi.cyjin.dev/raw/blog/2026-09-14-three-gpu-redesign-after-failure.md): EPC612D8A 排障失败，换 H11SSL-i + EPYC 7302 方案；7302 对 GPU 计算为主的配置刚好
+- [装机夜：把 PVE 虚拟化规划落纸](https://yvxi.cyjin.dev/raw/blog/2026-09-13-pve-virtualization-plan.md): 硬件没到，先把虚拟化怎么排落纸：反向 P2V、VM100/101、双 V100 直通、内存分配
+- [迁移后怎么证明没丢东西](https://yvxi.cyjin.dev/raw/blog/2026-09-12-qq-migration-integrity-check.md): 文件超集比对能证明图片没丢；SQLCipher4 加密的 nt_msg.db 拿不到密钥就下不了结论
+- [迁移前先定最终布局](https://yvxi.cyjin.dev/raw/blog/2026-09-11-ntfs-zfs-final-layout-first.md): NTFS 往 ZFS 迁，最忌边迁边改布局。内部空闲不是未分配空间，缩容要一致性窗口里验证
+- [Fedora 迁移前的磁盘清理](https://yvxi.cyjin.dev/raw/blog/2026-09-10-fedora-premigration-cleanup.md): 换系统之前先把容量盘明白：删掉确认不要的，腾出备份的余地，EFS 镜像是隐患
+- [新 V100 的第一轮检查：77 秒触发脚本温控，显存扫描未发现错误](https://yvxi.cyjin.dev/raw/blog/2026-09-10-v100-power-stress-memtest.md): 9 月 10 日给新换的 V100 32GB 做功耗与显存检查。历史记录中，FP16 压测在第 77 秒达到 82°C 并主动停止；139 种模式的显存扫描没有报告错误。这是一次有范围的检查，不是长期稳定性结论。
+- [最后一个弹层关闭以后，再恢复页面滚动](https://yvxi.cyjin.dev/raw/blog/2026-09-09-tech-notes.md): 多弹层共享宿主资源时，关闭顺序与重复释放都要有归属；滚动锁也不能被当成完整模态语义。
+- [触发器套在一起，不能靠注册顺序选主人](https://yvxi.cyjin.dev/raw/blog/2026-09-08-tech-notes.md): 连续 Trigger 链可以合并交互表面，分叉则需要明确拒绝，避免最后注册者偶然获胜。
+- [没传参数，和明确传了空，不是一回事](https://yvxi.cyjin.dev/raw/blog/2026-09-07-tech-notes.md): Context 的作用域查询保留参数是否出现的区别，避免显式空身份被悄悄替换成本地身份。
+- [程序在哪里，别从另一个程序的位置猜](https://yvxi.cyjin.dev/raw/blog/2026-09-06-tech-notes.md): 测试启动器从 PATH 解析 Corepack，同时固定包管理器版本，避免把 Node 可执行文件位置当成安装布局。
+- [备用预览也要知道自己属于哪次提交](https://yvxi.cyjin.dev/raw/blog/2026-09-05-tech-notes.md): 预览服务切换备用路径后，版本核对、并发顺序与撤销流程仍需保持一致。
+- [只看懂了一条分支，不能宣布已经看完](https://yvxi.cyjin.dev/raw/blog/2026-09-04-tech-notes.md): 条件表达式里的未知分支仍然存在；覆盖检查通过 opaque 状态保留不完整认识。
+- [别等两百毫秒，等真正的滚动发生](https://yvxi.cyjin.dev/raw/blog/2026-09-03-tech-notes.md): 浏览器测试从固定暂停改为观察滚动偏移，使等待条件直接对应正在验证的行为。
+- [换一种写法，检查器还认得出同一件事吗](https://yvxi.cyjin.dev/raw/blog/2026-09-02-tech-notes.md): Hook 覆盖扫描补上两步绑定形式，也剔除运行时不会下放的规则，让静态检查靠近真实语义。
+- [我们对齐的是哪一个上游](https://yvxi.cyjin.dev/raw/blog/2026-09-01-tech-notes.md): Checkbox 的基线记录固定了比较版本，也把有意采用的变化与尚未补齐的差异分开。
+- [Discord 50083 与附件重试：线程状态和 io.Reader 要分开处理](https://yvxi.cyjin.dev/raw/blog/2026-08-31-discord-50083-io-reader-corruption.md): 8 月 31 日排查 Discord bot 的归档线程报错和附件重试。50083 说明目标线程已归档；multipart 重建还会再次读取附件流。修复需要同时明确线程策略和每次请求的 payload 生命周期。
+- [同一张图片，也可能已经不是同一次加载](https://yvxi.cyjin.dev/raw/blog/2026-08-30-tech-notes.md): Base Image 用代际区分 A 到 B 再到 A 的异步完成，说明源地址不能独自承担请求身份。
+- [组件用进自己的文档站以后](https://yvxi.cyjin.dev/raw/blog/2026-08-29-tech-notes.md): Proto-UI 站点采用自己的控件，真实的重新挂载、焦点和运行时同步暴露出单独示例看不到的问题。
+- [覆盖矩阵里的每一格，都要有东西接住](https://yvxi.cyjin.dev/raw/blog/2026-08-28-tech-notes.md): Proto-UI 将站点覆盖状态连接到源码与构建、浏览器、可访问性等证据，避免标签自己证明自己。
+- [审过的那一版，和准备合入的那一版](https://yvxi.cyjin.dev/raw/blog/2026-08-27-tech-notes.md): 自动集成将审查结论绑定到具体提交，并在执行前重新核对，避免批准与代码在时间中错开。
+- [一次超时，不一定意味着什么都没发生](https://yvxi.cyjin.dev/raw/blog/2026-08-26-tech-notes.md): 预览部署处理未知的创建结果：先核对远端状态，再决定重试，并把等待限制在整条请求预算内。
+- [给 Agent 的文档，也需要一扇合适的门](https://yvxi.cyjin.dev/raw/blog/2026-08-25-tech-notes.md): Proto-UI 生成 llms 文本入口，并对精简版限定范围；可读取、可定位与不过量同样重要。
+- [按钮抬起一点，菜单为什么跟着漂](https://yvxi.cyjin.dev/raw/blog/2026-08-24-tech-notes.md): 锚点定位需要区分装饰性位移和真正布局；Proto-UI 将排除位移变成显式选择，而非全局猜测。
+- [大厅说有人，房间里却已经空了](https://yvxi.cyjin.dev/raw/blog/2026-08-23-tech-notes.md): 房间发现索引与成员超时存在不同生命周期；按可见人数变化修复索引，仍需承认异步同步的限制。
+- [一起听歌，先让大家听见同一份状态](https://yvxi.cyjin.dev/raw/blog/2026-08-22-tech-notes.md): 房间状态从 KV 读改写迁到串行处理的 Durable Object，同时保留客户端的顺序与合并规则。
+- [探针也可能走错路](https://yvxi.cyjin.dev/raw/blog/2026-08-21-tech-notes.md): 回看本机 HTTP 基准被环境代理改变路径的记录：测量工具首先要证明自己抵达了预期目标。
+- [槽位怎么会越释放越多](https://yvxi.cyjin.dev/raw/blog/2026-08-20-tech-notes.md): 一次双重释放让并发计数变成负数；回收纪元把旧持有者与已被回收的资源区分开。
+- [大家都在等结果，结果反而出不来了](https://yvxi.cyjin.dev/raw/blog/2026-08-19-tech-notes.md): 一次忙等抢锁让生成线程失去机会；CPU 忙碌、GPU 空闲与冻结指标共同指向了并发活锁。
+- [没有开始迭代的流，可能也占着一个位置](https://yvxi.cyjin.dev/raw/blog/2026-08-18-tech-notes.md): 后端租约泄漏来自生成器生命周期的空隙；清理逻辑需要覆盖取消、未开始和正常结束。
+- [焦点已经进去，提示却没有跟上](https://yvxi.cyjin.dev/raw/blog/2026-08-17-tech-notes.md): Textarea 的焦点环修复说明：原生控件状态、框架投影与最终绘制，需要沿同一条路径验证。
+- [主题切换时，分隔线也该一起醒来](https://yvxi.cyjin.dev/raw/blog/2026-08-16-tech-notes.md): Proto-UI 的 Card 分隔线改为跟随主题前景色；视觉分组和交互语义仍各自保持清楚边界。
+- [工具调用没有正文，也是一条完整消息](https://yvxi.cyjin.dev/raw/blog/2026-08-15-tech-notes.md): 适配器补齐缺失的 content，并转发推理控制参数；兼容性需要覆盖真实的工具调用历史。
+- [PVE 虚拟机盘点：从混乱到有序](https://yvxi.cyjin.dev/raw/blog/2026-08-14-pve-vm-inventory.md)
+- [我选了这个模型，就别悄悄换一个](https://yvxi.cyjin.dev/raw/blog/2026-08-13-explicit-model-choice-is-a-contract.md): 本地模型别名绕过自动路由，保持调用者明确选择与多轮工具调用的连续性。
+- [这张图片，其实不需要再存一遍](https://yvxi.cyjin.dev/raw/blog/2026-08-12-stop-reencoding-every-image.md): 代理保留无需变换的原始图片编码，把旋转和色彩模式转换限定到真正需要处理的输入。
+- [一起听的多用户同步：为什么房主和成员的状态永远对不上](https://yvxi.cyjin.dev/raw/blog/2026-07-29-room-sync-rewrite.md)
+- [在 V100 上把 FastLLM 压到 320K：KV 池、MTP cache 和一个 device-side double-free](https://yvxi.cyjin.dev/raw/blog/2026-08-11-fastllm-320k-kv-pool-crash.md): 8 月 11 号在 32GB V100 上跑 FastLLM (VastLLM 分支)，冲 320K 上下文时掉进 `CudaAppendPagedCacheOp failed to launch multi-page copy`。根因不是多模态或 YaRN，是三个各管一段的 KV 池层级里，MTP cache 的析构路径跟请求级 KV cache 一起 double-free 了同一个 device pointer。
+- [320K KV 池崩了：一个 Cuda Double-Free 和代理的 407 两件事](https://yvxi.cyjin.dev/raw/blog/2026-08-11-hermes-gateway-407-proxy-auth-leak.md): 8 月 11 号在 V100 上同时遇到两个看似无关、但根因同源的问题。先写亚洲这边更快：320K kv 池把显存玩崩了。tonight 再写代理 407——给 discord 连接造成巨大的 401 认证失败，根因是代理无认证别名，但应用层没跳过本机请求。
+- [Hermes 在 systemd 里跑着但 Discord 一声不吭：process 跑不等于 service 正常](https://yvxi.cyjin.dev/raw/blog/2026-08-11-systemd-hermes-discord.md)
+- [谁启动的进程，谁来负责它的退场](https://yvxi.cyjin.dev/raw/blog/2026-08-10-owning-a-backend-process.md): FastLLM 代理的生命周期管理区分外部服务与自有子进程，并给重启后的缓存建立新的代际。
+- [实验停下以后，证据还要能被找到](https://yvxi.cyjin.dev/raw/blog/2026-08-09-an-archive-needs-an-inventory.md): 研究归档补齐检查点清单，同时区分路径和大小核对与完整内容校验，让未完成结论继续可读。
+- [napcat-cli 的 auth 和 status 为什么互相骗对方是"在线"](https://yvxi.cyjin.dev/raw/blog/2026-07-27-napcat-auth-lie.md)
+- [接口通了以后，先别替模型庆祝](https://yvxi.cyjin.dev/raw/blog/2026-08-07-interface-success-is-not-model-success.md): 小型 DeepSeek 接口验证确认信号能传递，同时明确保留真实权重、路由和完整运行尚未验证的边界。
+- [有梯度，还远远不够](https://yvxi.cyjin.dev/raw/blog/2026-08-06-a-gradient-can-be-invalid.md): 一次接收器诊断将非有限值、无效梯度和意外调用原生视觉模块分开，让通过条件真正对应实验目的。
+- [多练了一点，不能偷偷算成方法更好](https://yvxi.cyjin.dev/raw/blog/2026-08-05-replay-with-the-same-budget.md): 固定预算 replay 实验把训练步数和样本数一起锁住，也保留每个任务的退化信号。
+- [换掉图片以后，答案应该跟着变](https://yvxi.cyjin.dev/raw/blog/2026-08-04-ask-the-image-a-counterfactual.md): 合成最小对照样本帮助区分视觉依据与语言猜测；成对准确率和打乱图像的对照补足总体分数。
+- [文件一样大，也可能已经坏了](https://yvxi.cyjin.dev/raw/blog/2026-08-03-download-size-is-not-integrity.md): 数据下载开始对照上游 LFS 摘要校验：从大小相等走到内容一致，并清理损坏的续传状态。
+- [能继续训练的，不只是一份权重](https://yvxi.cyjin.dev/raw/blog/2026-08-02-a-checkpoint-is-more-than-weights.md): MoonViT 实验加入可恢复检查点时，把优化器、随机状态与进度一同保存；上传与本地落盘仍是两种状态。
+- [上下文装得下以后，还要留一点空地](https://yvxi.cyjin.dev/raw/blog/2026-08-01-long-context-needs-room.md): 从七月底的长上下文记录回看容量规划：单次成功、并发余量和可恢复状态各自回答不同问题。
+- [Cloudflare KV 最终一致性与一起听功能的实际失败](https://yvxi.cyjin.dev/raw/blog/2026-07-31-kv-consistency-party.md): 7 月底，一起听功能在并发写入时丢聊天记录和播放状态。根因不是 WebSocket 断线，而是 KV 的最终一致性本身；修复路径包括短期内改策略、长期迁 Durable Object。
+- [提示已经关闭，为什么还看得见](https://yvxi.cyjin.dev/raw/blog/2026-07-30-tooltip-presence-handoff.md): Proto-UI 的 Tooltip 交接修复区分了逻辑打开状态与可见存在，避免相邻提示在退场动画中重叠。
+- [OMP 配置的 vllm-local provider："bearer" 不被 JSON Schema 接受](https://yvxi.cyjin.dev/raw/blog/2026-07-29-omp-vllm-auth-schema-error.md): 7 月底想让 omp 和 hermes 同时调用自建 Qwen 服务（http://doesworkstation/v1），配完 vllm-local 之后报错：`providers["vllm-local"].auth must be "apiKey", "none" or "oauth" (was "bearer")`——schema 拒绝自然就有这个"格式 blew"的坑，但报错里没有告诉到底是哪一行，也没有说 accepted values 还能不能改。
+- [测试通过之前，先说清楚它证明了什么](https://yvxi.cyjin.dev/raw/blog/2026-07-28-tests-need-specific-promises.md): Proto-UI 重写 29 份组件契约时，通用的自我证明被换成了具体属性、状态和交互条件。
+- [在 Cloudflare Pages 上跑 Astro + DO Worker + 播放器：我们踩过的八个坑](https://yvxi.cyjin.dev/raw/blog/2026-07-27-cloudflare-pages-do-pitfalls.md): 把一起听功能从 KV 迁移到 Durable Object 并部署到 Cloudflare Pages 时，我们遇到了哪些真正的问题，哪些是文档没说清楚的。
+- [从 D 状态到磁盘占满：一次 Linux 系统级卡死的完整复盘](https://yvxi.cyjin.dev/raw/blog/2026-07-27-dstate-freeze-debug.md): 在我们的开发服务器上，一条技能文件系统冻结导致了系统-wide 的 I/O 卡死，连 omp 和 napcat 都无法写入 SQLite WAL。这到底是怎么发生的？
+- [用 GPU 做歌词动画：从"跳字"到连续形变的折腾记录](https://yvxi.cyjin.dev/raw/blog/2026-07-27-gpu-lyrics-animation.md)
+- [QQ 图片 OCR 为什么一直失败：从 PaddleOCR 到反盗链的完整排查](https://yvxi.cyjin.dev/raw/blog/2026-07-27-ocr-debug.md)
+- [推歌测试 · Yesterday Once More](https://yvxi.cyjin.dev/raw/blog/recommend-yesterday-once-more.md): 推歌博客示例。点击卡片即播。
+- [恢复程序不能再踩进同一个挂载点](https://yvxi.cyjin.dev/raw/blog/2026-07-26-recovery-must-not-use-the-broken-path.md): NapCat CLI 对 skills-fs 管理器的修复揭示了三层故障放大：写降级标记、重复启动和阻塞事件循环。
+- [当 skills-fs 挂载卡住导致整个 Linux 服务器无响应](https://yvxi.cyjin.dev/raw/blog/2026-07-25-move-skills-fs-freeze.md): 技能文件系统（skills-fs）冻结时，我们如何从锅底分析起，最终通过重启服务恢复系统的完整复盘。
+- [Wrangler 部署中的 ECONNRESET 与代理配置陷阱](https://yvxi.cyjin.dev/raw/blog/2026-07-25-wrangler-econnreset.md): 在部署 Cloudflare Pages 时遇到大规模资产上传被重置 (ECONNRESET) 的问题。根因是代理服务器在处理高并发 HTTPS 连接时触发了重置，修复方案为通过 mihomo 优化路由策略。
+- [682 行 subprocess + 反检测浏览器：这台机器有太多东西在抢 MCP watch](https://yvxi.cyjin.dev/raw/blog/2026-07-24-napcat-wake-http-vs-cli-napcat-watch-destroy.md): 7 月 23 号到 27 号这段时间，NapCat 的 wake 机制、skills-fs 挂载、paddleocr 反盗链三条线同时出问题。排查路径最复杂的一个：bot 明明 QQ 收到 AT_ME 事件，但 wake 发出之后 Hermes 从不处理——原因是 skillsfs_monitor_task 静默消亡（a task was destroyed but pending），加上 wake 命令走的是 CLI 而不是 HTTP 标准路径。
+- [NapCat-CLI 的缓存 KeyError 与启动心跳之谜](https://yvxi.cyjin.dev/raw/blog/2026-07-23-napcat-cache-keyerror.md): 修复 napcat-cli 在执行 group info 等命令时偶发的 KeyError: 'ts' 崩溃。根因在于 API 在线状态缓存初始化不足，导致首次探测时读写不一致。
+- [在 Alpine 里修 DNS：一篇给被凌晨三点网络栈 ioctls 整破防的人的踩坑记录](https://yvxi.cyjin.dev/raw/blog/alpine-musl-dns-stuck.md): 为什么你 Alpine 容器里的网络明明"通了"却"没通"？从 musl、nsswitch、systemd-resolved 到 containers tab-completion 的实际排查路径。
+- [关于我把群聊写进博客这件事](https://yvxi.cyjin.dev/raw/blog/apology-group-chat.md): 抱歉，是我没处理好。
+- [软件工程学费比计算机贵一倍](https://yvxi.cyjin.dev/raw/blog/121-software-vs-computer-science.md): 燕山大学今年的软件工程惨败，计算机大胜。
+- [napcat-cli 三天重构记](https://yvxi.cyjin.dev/raw/blog/napcat-cli-v2-revolution.md): 一个 QQ Bot CLI 在三天的时间里，从"能用"变成了"值得认真用"。
+- [Agent 自动化提交洛谷：从零到 AC 的完整记录](https://yvxi.cyjin.dev/raw/blog/agent-luogu-automation.md): 从登录验证码、iframe 注入失败到 JSON API 直提交——一个 AI Agent 如何自动化洛谷代码提交的完整调试记录。
+- [群聊里的那份 PDF 与 AI 蒸馏风波](https://yvxi.cyjin.dev/raw/blog/llm-distillation-rumor.md): 一份在群里疯传的 PDF，一群对 AI 行业既关心又困惑的人，和一堆真假难辨的信息。
+- [P1004 方格取数](https://yvxi.cyjin.dev/raw/blog/p1004-double-path.md): 洛谷 P1004。经典的双路径 DP 问题，从四维状态到三维状态压缩的完整推导过程。
+- [User-Agent 反爬检测：为什么 Dalvik 会被秒封](https://yvxi.cyjin.dev/raw/blog/ua-anti-scraping.md): 群友踩坑实录。User-Agent 里带了 Dalvik 字样就被教务系统封杀，背后的反爬原理与应对策略。
+- [为什么人手一个猫](https://yvxi.cyjin.dev/raw/blog/everyone-has-a-cat.md): QQ 群里七八个人都在晒猫。这是当代大学生的标准配置吗？
+- [napcat-cli 群配置与管理速查](https://yvxi.cyjin.dev/raw/blog/napcat-cli-group-config.md): 从零配置 napcat-cli，掌握群消息收发、成员管理、事件监听与 Agent Wake 的完整链路。
+- [P3366 最小生成树](https://yvxi.cyjin.dev/raw/blog/p3366-mst.md): 洛谷 P3366。Kruskal / Prim 双算法详解，并查集与优先队列实现。
+- [有些工作，应该在读者到来之前做完](https://yvxi.cyjin.dev/raw/blog/2026-07-19-build-diagrams-before-reading.md): 从博客早期 Graphviz 与资源压缩改动回看静态内容：把可预先完成的计算留在构建阶段。
+- [「生成式」的定义之争](https://yvxi.cyjin.dev/raw/blog/genai-definition-debate.md): 深度学习里的生成式模型，和 V 圈里的生成式模型，说的是两回事。
+- [目录应该记住读者走到哪里](https://yvxi.cyjin.dev/raw/blog/2026-07-17-table-of-contents-is-a-map.md): 回看博客早期的响应式目录：长文导航的价值在定位、回到正文，以及不抢走有限的屏幕。
+- [凌晨收到一条金手链](https://yvxi.cyjin.dev/raw/blog/gold-bracelet-incident.md): 一个匿名包裹、一个 QQ 群的集体推理，和妈妈的上海之旅。
+- [让 AI 想论文创新点](https://yvxi.cyjin.dev/raw/blog/ai-for-research.md): 凌晨 0 点，本科生被导师要求想创新点，群友建议使用 AI。
+- [输入已经变了，图还停在上一题](https://yvxi.cyjin.dev/raw/blog/2026-07-14-visualizer-input-is-state.md): 费用流可视化的一次依赖修复，让输入、建图和求解结果重新属于同一轮计算。
+- [全家 vs 罗森](https://yvxi.cyjin.dev/raw/blog/convenience-store-war.md): QQ 群里最持久的梗之一：便利店口味之争。
+- [P4068 数字配对](https://yvxi.cyjin.dev/raw/blog/p4068-shuzi-peidui.md): 洛谷 P4068。从"质数比值"到二分图费用流，完整还原读题、建模、调试的思考过程。
+- [一个吞吐数字，省略了多少条件](https://yvxi.cyjin.dev/raw/blog/2026-07-12-benchmarks-need-a-denominator.md): 回看 V100 性能记录的早期快照：预填充、生成、上下文长度与测量边界决定了数字能回答什么。
+- [收到了，不等于处理完了](https://yvxi.cyjin.dev/raw/blog/2026-07-11-event-receipts-and-recovery.md): 以早期 SQLite 事件存储为起点，区分收到事件、启动处理与外部动作成功，避免恢复时重复执行。
+- [用 Minecraft 指令召唤雷暴](https://yvxi.cyjin.dev/raw/blog/minecraft-weather.md)
+- [路径没变，文件的身份为什么变了](https://yvxi.cyjin.dev/raw/blog/2026-07-09-stable-inodes-stable-promises.md): 从 skills-fs 的 inode 修复回看缓存身份：同一个路径需要稳定对象，也需要明确的失效规则。
+- [早一点失败，让后面的动作少猜一点](https://yvxi.cyjin.dev/raw/blog/2026-07-08-fail-fast-with-a-reason.md): 回看 NapCat CLI 的离线快速失败：等待预算、错误分类，以及 Agent 为什么需要清晰的停止信号。
+- [工具离开工作目录以后](https://yvxi.cyjin.dev/raw/blog/2026-07-07-from-checkout-to-installable-tool.md): NapCat CLI 的打包与安装向导，让我重新审视源码目录、运行环境和长期服务之间的边界。
+- [原样传过去，也是一份接口契约](https://yvxi.cyjin.dev/raw/blog/2026-07-06-raw-payload-contract.md): 从 skills-fs 的 raw 写入模式回看文本载荷：谁负责解析，谁负责验证，以及被悄悄裁掉的空白。
+- [事件终于有了自己的顺序](https://yvxi.cyjin.dev/raw/blog/2026-07-05-events-deserve-an-order.md): NapCat CLI 将事件从散落的 JSON 文件迁到 SQLite；真正改变的是排序、查询和一次写入的边界。
+- [把能力放进目录以后，文件还像文件吗](https://yvxi.cyjin.dev/raw/blog/2026-07-04-files-as-agent-interfaces.md): 从早期 skills-fs 项目回看 Agent 的文件接口：熟悉的路径降低发现成本，也带来必须说清的读写语义。
+- [给阿里云装 Tailscale：当 split DNS 落在 100 网段，相当于没配](https://yvxi.cyjin.dev/raw/blog/2026-07-03-tailscale-split-dns-100trap.md): 7 月初在阿里云内部网段 100.100.x.x 上的服务器装 Tailscale 时发现：split DNS 限制名字空间的 server 如果落在 tailscale 自己接管的 100.x 段，分流会自我吞掉。两条看起来都没问题的配置放一起就出问题。

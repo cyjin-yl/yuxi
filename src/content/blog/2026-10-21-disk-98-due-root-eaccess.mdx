@@ -4,10 +4,12 @@ description: 10 月 21 号 df 显示根盘 364G 已用，但普通用户跑 du �
 date: 2026-10-21
 tags: [linux, disk, systemd, du, fedora, docker, flatpak]
 draft: false
-summary: df 报 98% 但 ezra 用户 du 只能看到 221G。sudo du 才发现 /root/ct102-migration 独占 30G、/var/lib/docker 20G、/var/lib/flatpak 22G。普通用户 du 遇到 EACCES 不报错只跳过，造成"明明满盘但找不到大户"的错觉。教训：排查磁盘空间永远用 sudo du，且要加 --max-depth 控制递归深度避免 300 秒超时。
+summary: df 报 98% 但 ezra 用户 du 只能看到 221G。sudo du 才发现 /root/migration-archive-example 独占 30G、/var/lib/docker 20G、/var/lib/flatpak 22G。普通用户 du 遇到 EACCES 不报错只跳过，造成"明明满盘但找不到大户"的错觉。教训：排查磁盘空间永远用 sudo du，且要加 --max-depth 控制递归深度避免 300 秒超时。
 ---
 
 import NetEasePlay from '../../components/NetEasePlay.astro';
+
+> 2026-11-24 公开稿整理：迁移归档路径改为 `/root/migration-archive-example` 示例目录，保留 root 权限边界与磁盘占用排查步骤；它不是当前生产目录。
 
 ## 事件
 
@@ -15,11 +17,11 @@ import NetEasePlay from '../../components/NetEasePlay.astro';
 
 ## 坑
 
-普通用户跑 du 遇到 EACCES 权限不足的目录不会报错，直接跳过。`/root` 30G、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G 全部对 ezra 不可见。更隐蔽的是第一次跑 du 没加 `--max-depth`，全盘递归 300 秒超时被杀，只拿到了半截结果，看起来像 du 本身有问题。sudo 跑同样的命令，`/root/ct102-migration` 30G 独占、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G、`/var/lib/dnf` 11G 全部暴露出来。
+普通用户跑 du 遇到 EACCES 权限不足的目录不会报错，直接跳过。`/root` 30G、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G 全部对 ezra 不可见。更隐蔽的是第一次跑 du 没加 `--max-depth`，全盘递归 300 秒超时被杀，只拿到了半截结果，看起来像 du 本身有问题。sudo 跑同样的命令，`/root/migration-archive-example` 30G 独占、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G、`/var/lib/dnf` 11G 全部暴露出来。
 
 ## 修复
 
-`sudo du -xh --max-depth=1 / 2>/dev/null | sort -hr | head` 一次拿到全貌：`/home` 221G（ezra 216G）、`/var` 64G、`/usr` 40G、`/root` 30G。真正的大户是 `/root/ct102-migration`（30G 的 LXC 迁移备份）和 Docker 镜像/卷（20G），加上 Flatpak 运行时（22G）。用户自己决定保留哪些层级后释放了约 50G。
+`sudo du -xh --max-depth=1 / 2>/dev/null | sort -hr | head` 一次拿到全貌：`/home` 221G（ezra 216G）、`/var` 64G、`/usr` 40G、`/root` 30G。真正的大户是 `/root/migration-archive-example`（30G 的 LXC 迁移备份）和 Docker 镜像/卷（20G），加上 Flatpak 运行时（22G）。用户自己决定保留哪些层级后释放了约 50G。
 
 ## 经验
 

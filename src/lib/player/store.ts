@@ -174,12 +174,18 @@ class YuxiPlayer {
   private partyIntentSeq = 0;
   private preloadPool: HTMLAudioElement[] = [];
   private preloadId: string | null = null;
+  private initializing: Promise<void> | null = null;
 
   async init() {
     if (typeof window === 'undefined') return;
     if (this.ready) return;
+    if (!this.initializing) this.initializing = this.initialize().finally(() => { this.initializing = null; });
+    return this.initializing;
+  }
+
+  private async initialize() {
     this.audio = new Audio();
-    this.audio.preload = 'auto';
+    this.audio.preload = 'metadata';
     this.audio.volume = this.volume;
     this.audio.addEventListener('timeupdate', () => {
       if (!this.audio) return;
@@ -1109,7 +1115,7 @@ class YuxiPlayer {
 
     if (target) {
       if (!this.catalog) this.catalog = { version: 1, collections: [], tracks: {} };
-      this.catalog.tracks[target.id] = {
+      this.catalog.tracks[target.id] = this.catalog.tracks[target.id]?.source === 'local' ? this.catalog.tracks[target.id] : {
         id: target.id,
         title: target.title,
         artist: target.artist,
@@ -1216,7 +1222,7 @@ class YuxiPlayer {
     if (currentId) ids.push(currentId);
     for (const t of room.queue) {
       if (t.id === currentId) continue;
-      this.catalog.tracks[t.id] = {
+      this.catalog.tracks[t.id] = this.catalog.tracks[t.id]?.source === 'local' ? this.catalog.tracks[t.id] : {
         id: t.id,
         title: t.title,
         artist: t.artist,
@@ -1247,7 +1253,7 @@ class YuxiPlayer {
 
   /** Play the browser-local liked playlist (never touches NetEase playlists). */
   playLikedCollection(): void {
-    const tracks = likedTracksAsPlayerTracks();
+    const tracks = likedTracksAsPlayerTracks().map((track) => this.catalog?.tracks[track.id]?.source === 'local' ? this.catalog.tracks[track.id] : track);
     if (!tracks.length) return;
     if (!this.catalog) this.catalog = { version: 1, collections: [], tracks: {} };
     const trackIds: string[] = [];

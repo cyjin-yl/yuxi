@@ -21,7 +21,12 @@ source: src/pages/about.astro
 - 框架：Astro + MDX
 - 公式：KaTeX
 - 图表：Graphviz / Mermaid
-- 托管：Cloudflare Pages
+- 托管：OVH + Cloudflare
+- 后端：Node.js + SQLite
+
+## 关于历史补写
+
+标有「历史补写」的文章依据留存的项目记录和公开贡献整理；文章日期为归档日期，backfilledAt 为实际补写日期。它们不是当日即时日记。
 
 ## 联系
 

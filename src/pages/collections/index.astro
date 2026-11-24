@@ -1,17 +1,40 @@
 ---
+import '../../styles/music.css';
 import BaseLayout from '../../layouts/base.astro';
 import Header from '../../components/header.astro';
 import Footer from '../../components/footer.astro';
+import classics from '../../data/classic-songs.json';
 ---
 
-<BaseLayout title="曲库" description="通过服务端代理浏览与播放网易云歌单。">
+<BaseLayout title="曲库" description="听原有的 40 首经典英语歌曲，也可以连接自己的网易云歌单。">
   <Header currentPath="/collections/" />
 
   <main id="main" class="home">
     <div class="home-intro">
       <h1>曲库</h1>
-      <p>网易云歌单经服务端代理加载与播放；浏览器不接触账户凭据。本地红心歌单只保存在本机。</p>
+      <p>这里留着原来的 40 首经典英语歌曲，也可以连接自己的网易云歌单。喜欢的音乐保存在当前浏览器。</p>
     </div>
+
+    <section class="netease-section classics-section" id="classics" aria-labelledby="classics-heading">
+      <div class="classics-heading">
+        <div>
+          <h2 class="netease-section-title" id="classics-heading">经典英语歌曲 · 40 首</h2>
+          <p class="netease-section-note">原来的录音已经搬回来，点开就能听。</p>
+        </div>
+        <button class="collection-btn" type="button" data-play-collection="classic-songs">播放全部</button>
+      </div>
+      <ol class="classics-list">
+        {classics.map((song) => (
+          <li>
+            <button type="button" data-play-track={song.id} data-collection="classic-songs" aria-label={`播放 ${song.title}`}>
+              <span class="classics-number" aria-hidden="true">{String(song.number).padStart(2, '0')}</span>
+              <span><strong>{song.title}</strong><small>{song.artist}</small></span>
+              <span class="classics-play" aria-hidden="true">▶</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </section>
 
     <section class="netease-section local-likes-section" aria-label="本地喜欢的音乐" id="local-likes-section" hidden>
       <h2 class="netease-section-title">本地 · 我喜欢的音乐</h2>
@@ -29,6 +52,20 @@ import Footer from '../../components/footer.astro';
 
   <Footer />
 </BaseLayout>
+
+<style>
+  .classics-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+  .classics-heading .collection-btn { flex-shrink: 0; }
+  .classics-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem 1.5rem; }
+  .classics-list button { width: 100%; display: flex; align-items: center; gap: .8rem; padding: .85rem .55rem; border: 0; border-radius: .5rem; color: inherit; background: transparent; text-align: left; cursor: pointer; }
+  .classics-list button:hover, .classics-list button:focus-visible { background: color-mix(in srgb, currentColor 7%, transparent); }
+  .classics-list button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .classics-number { opacity: .55; font-variant-numeric: tabular-nums; }
+  .classics-list strong { display: block; font-size: .95rem; font-weight: 500; }
+  .classics-list small { display: block; opacity: .65; font-size: .8rem; margin-top: .15rem; }
+  .classics-play { margin-left: auto; font-size: .75rem; opacity: .65; }
+  @media (max-width: 640px) { .classics-list { grid-template-columns: 1fr; } .classics-heading { align-items: flex-start; } }
+</style>
 
 <script is:inline data-astro-rerun>
   (function () {
@@ -69,7 +106,11 @@ import Footer from '../../components/footer.astro';
       cover.className = 'netease-cover';
       cover.alt = '';
       cover.loading = 'lazy';
-      cover.src = p.coverUrl || '';
+      cover.decoding = 'async';
+      cover.width = 240;
+      cover.height = 240;
+      var coverUrl = String(p.coverUrl || '').replace(/^http:/, 'https:');
+      cover.src = /^https:\/\/p\d+\.music\.126\.net\//.test(coverUrl) ? coverUrl.split('?')[0] + '?param=240y240' : coverUrl;
       coverWrap.appendChild(cover);
 
       var title = document.createElement('span');
@@ -148,8 +189,8 @@ import Footer from '../../components/footer.astro';
       root.className = 'netease-grid netease-grid-login';
       root.innerHTML =
         '<div class="netease-login-card">' +
-        '<h3>网易云登录已失效</h3>' +
-        '<p>用网易云音乐 App 扫码并确认登录；凭据只写入服务端，不进入浏览器。</p>' +
+        '<h3>登录网易云</h3>' +
+        '<p>用网易云音乐 App 扫码确认；登录仅属于当前浏览器会话，凭据保存在服务端。</p>' +
         '<div id="netease-qr-box" class="netease-qr-box"><p class="netease-loading">正在生成二维码…</p></div>' +
         '<p id="netease-qr-status" class="netease-qr-status">准备二维码…</p>' +
         '<button id="netease-qr-refresh" type="button" class="collection-btn">重新生成二维码</button>' +
@@ -169,7 +210,7 @@ import Footer from '../../components/footer.astro';
       var refresh = document.getElementById('netease-qr-refresh');
       if (refresh) refresh.setAttribute('disabled', '');
       setQrStatus('正在生成二维码…');
-      fetch('/netease/auth/qr/create', { method: 'POST' })
+      fetch('/netease/auth/qr/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
         .then(function (r) {
           if (!r.ok) throw new Error(String(r.status));
           return r.json();
@@ -269,6 +310,8 @@ import Footer from '../../components/footer.astro';
         });
     }
 
+    renderLocalLikes();
+    document.addEventListener('astro:before-swap', stopQrTimer, { once: true });
     loadPlaylists();
   })();
 </script>

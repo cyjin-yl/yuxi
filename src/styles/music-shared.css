@@ -1,0 +1,101 @@
+/* ── Progressive cover (reactive thumbnail → full cross-fade) ── */
+.yp-prog-cover {
+  position: relative; overflow: hidden; isolation: isolate;
+  width: 100%; height: 100%; display: block;
+  background: color-mix(in srgb, var(--ink-5, var(--ink-3, #aaa)) 8%, transparent);
+  border-radius: inherit;
+}
+.yp-prog-cover > img {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  object-fit: cover; pointer-events: none; user-select: none;
+  -webkit-user-drag: none;
+}
+/* Thumbnail: always behind. Blurry + small for instant first paint. Spring
+   away (blur→0, opacity→0) when the full layer covers it. */
+.yp-prog-thumb {
+  z-index: 1;
+  transform: scale(1.04);
+  filter: blur(0.8px) saturate(1.05);
+  opacity: 1;
+  transition:
+    filter var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
+    opacity var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
+    transform var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1);
+}
+/* Non-NetEase: no smaller byte-size, fake the placeholder with blur on the
+   full URL itself — the browser still streams progressive. */
+.yp-prog-thumb.is-blur-fallback { filter: blur(12px) saturate(0.9); transform: scale(1.12); }
+.yp-prog-cover > .yp-prog-thumb[data-loaded="1"] {
+  opacity: 0;
+  filter: blur(0);
+  transform: scale(1);
+}
+/* Full layer: invisible until its `load` fires (React sets `.is-loaded`).
+   Then it springs in — from a hair scaled up to 1, painting over the thumb. */
+.yp-prog-full {
+  z-index: 2;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1),
+    transform var(--yp-prog-duration, 650ms) cubic-bezier(.22,1,.36,1);
+}
+.yp-prog-full.is-loaded { opacity: 1; transform: scale(1); }
+
+/* ── NetEase MDX play widget — click-to-play blog embed ── */
+.yp-netease-widget {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.9rem 1.1rem 0.9rem 0.9rem;
+  margin: 1.5rem 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--mark-soft, #eee) 28%, transparent);
+  border: var(--hair, 1px) solid color-mix(in srgb, var(--rule, #ddd) 70%, transparent);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 180ms ease, transform 240ms cubic-bezier(.22,1,.36,1);
+  text-decoration: none;
+}
+.yp-netease-widget:hover {
+  background: color-mix(in srgb, var(--mark-soft, #eee) 42%, transparent);
+  transform: translateY(-1px);
+}
+.yp-netease-widget-cover {
+  position: relative; flex: 0 0 auto;
+  width: 4.8rem; height: 4.8rem; border-radius: 0.75rem; overflow: hidden;
+  box-shadow: 0 4px 16px -8px rgba(0,0,0,0.4);
+}
+.yp-netease-widget-meta { min-width: 0; flex: 1; }
+.yp-netease-widget-kicker {
+  font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-3); margin-bottom: 0.2rem;
+}
+.yp-netease-widget-title {
+  font-weight: 700; font-size: 1rem; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yp-netease-widget-sub {
+  margin-top: 0.2rem; font-size: 0.78rem; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.yp-netease-widget-cta {
+  flex: 0 0 auto; display: grid; place-items: center;
+  width: 2.6rem; height: 2.6rem; border-radius: 50%;
+  background: var(--ink, #111); color: var(--bg, #fff);
+  transition: transform 220ms cubic-bezier(.22,1,.36,1);
+}
+.yp-netease-widget:hover .yp-netease-widget-cta { transform: scale(1.08); }
+.yp-netease-widget-cta svg { width: 1.1rem; height: 1.1rem; }
+@media (max-width: 480px) {
+  .yp-netease-widget { gap: 0.6rem; padding: 0.65rem; }
+  .yp-netease-widget-cover { width: 3.2rem; height: 3.2rem; }
+  .yp-netease-widget-cta { width: 2.25rem; height: 2.25rem; }
+  .yp-netease-widget-title { font-size: 0.94rem; }
+  .yp-netease-widget-sub { font-size: 0.74rem; }
+}

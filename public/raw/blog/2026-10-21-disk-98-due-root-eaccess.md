@@ -1,0 +1,31 @@
+---
+title: 磁盘 98% 满但 du 看不到大户：root 权限差异隐藏了 50G 数据
+description: 10 月 21 号 df 显示根盘 364G 已用，但普通用户跑 du 只能看到 221G。剩下的 143G 分布在 root 才读得到的 /root 和 /var/lib/docker 里，普通用户 du 全程报 EACCES 然后静默跳过。
+date: 2026-10-21
+tags: [linux, disk, systemd, du, fedora, docker, flatpak]
+draft: false
+summary: df 报 98% 但 ezra 用户 du 只能看到 221G。sudo du 才发现 /root/migration-archive-example 独占 30G、/var/lib/docker 20G、/var/lib/flatpak 22G。普通用户 du 遇到 EACCES 不报错只跳过，造成"明明满盘但找不到大户"的错觉。教训：排查磁盘空间永远用 sudo du，且要加 --max-depth 控制递归深度避免 300 秒超时。
+---
+
+import NetEasePlay from '../../components/NetEasePlay.astro';
+
+> 2026-11-24 公开稿整理：迁移归档路径改为 `/root/migration-archive-example` 示例目录，保留 root 权限边界与磁盘占用排查步骤；它不是当前生产目录。
+
+## 事件
+
+2026 年 10 月 21 号，df 报根盘 392G 已用 343G（93%）。ezra 用户跑 `du -xh --max-depth=1 /` 只能看到总量 221G，和 df 差了 120G。
+
+## 坑
+
+普通用户跑 du 遇到 EACCES 权限不足的目录不会报错，直接跳过。`/root` 30G、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G 全部对 ezra 不可见。更隐蔽的是第一次跑 du 没加 `--max-depth`，全盘递归 300 秒超时被杀，只拿到了半截结果，看起来像 du 本身有问题。sudo 跑同样的命令，`/root/migration-archive-example` 30G 独占、`/var/lib/docker` 20G、`/var/lib/flatpak` 22G、`/var/lib/dnf` 11G 全部暴露出来。
+
+## 修复
+
+`sudo du -xh --max-depth=1 / 2>/dev/null | sort -hr | head` 一次拿到全貌：`/home` 221G（ezra 216G）、`/var` 64G、`/usr` 40G、`/root` 30G。真正的大户是 `/root/migration-archive-example`（30G 的 LXC 迁移备份）和 Docker 镜像/卷（20G），加上 Flatpak 运行时（22G）。用户自己决定保留哪些层级后释放了约 50G。
+
+## 经验
+
+排查磁盘空间永远用 `sudo du`，普通用户的 du 会静默跳过无权限目录，造成"找不到大户"的错觉。加 `--max-depth=1` 控制递归深度，避免全盘扫描超时。df 和 du 的差异 = 无权限目录 + 已删除但未释放的文件（`lsof +L1` 可查）。
+
+🎵 Listening companion
+<NetEasePlay id="2006234" kind="song" />

@@ -1,29 +1,31 @@
 ---
-title: 把 ACT 实验室网线交给路由器当 WAN：死在对端 .254，不是你的线
-description: 11 月 2 号把 doesvm 的 ACT 物理网口从宿主移交给 doesrouter 当独立 WAN。vmbr3 桥接、/32 主机路由、按健康检查调 metric。排查中发现网关 192.168.5.254 的 ARP 永远是 INCOMPLETE，最后判定问题死在对端交换机，不是自己的线、桥或路由。
+title: "把实验室网口交给路由器当 WAN：排查停在网关 ARP 未完成"
+description: "11 月 2 日把实验室物理网口移交路由虚拟机，按健康检查控制默认路由。网关 ARP 持续 INCOMPLETE；链路有载波和接收流量，但这些观察还不足以排除本机配置或确定对端故障。"
 date: 2026-11-02
 tags: [openwrt, networking, vmbr3, arp, policy-routing, fedora, pve]
 draft: false
-summary: ACT 有线接入 doesrouter 当独立 WAN：vmbr3 只桥 nic0 和 router 的 eth2，不接 vmbr1/vmbr2。192.168.5.239/32 从宿主移到 router eth2。排查发现网关 .254 的 ARP 一直是 INCOMPLETE，但 nic0 Link up、载波在、RX 还在增长——线插着一个活交换机，只是 .254 不回应。判定死在对端（断电/换网段/端口策略），ACT 只当内网通道（Crater 等），公网保持 Wi-Fi 优先。
+summary: "独立 WAN 的桥接与主机地址已调整，公网继续优先使用校园无线。历史探测看到 Link up、RX 增长和网关 ARP 未完成；对端设备、网段或策略是候选原因，仍缺 ARP 报文往返及对端状态的验证。"
 ---
 
 import NetEasePlay from '../../components/NetEasePlay.astro';
 
+> 2026-11-24 校订说明：主机和端点已改为角色名称与文档示例；保留链路与 ARP 观察，将“确定死在对端”改为待验证推断，补清尚缺的报文和对端证据。
+
 ## 事件
 
-2026 年 11 月 2 号，把 doesvm 的 ACT 物理网口交给 doesrouter（VM103，OpenWrt）作为独立 WAN。目标是 ACT 内网站点经有线直达，公网保持 ezra Wi-Fi 优先，海外流量继续走 PassWall2 分流。
+2026 年 11 月 2 号，把 工作虚拟机 的 ACT 物理网口交给 路由虚拟机（OpenWrt）作为独立 WAN。目标是 ACT 内网站点经有线直达，公网保持 校园 Wi-Fi 优先，海外流量继续走 PassWall2 分流。
 
 ## 坑
 
-排查中最大的误导是以为网线或桥有问题。实测：doesvm nic0 Link up、1G full、载波在，RX 计数还在增长（5 秒 +16 包），说明网线插着一个活交换机，ACT 侧有流量进来。但网关 192.168.5.254 的 ARP 始终是 INCOMPLETE，ICMP 全丢。线是好的、桥是通的、路由也对了——问题在 ACT 实验室那头，.254 的设备断电了或换了网段或端口策略。另外 `192.168.5.239/32` 这个主机地址原来挂在宿主上，必须移到 router 的 eth2，否则会出现宿主和 router 抢同一地址的三层回环。
+当时记录到工作虚拟机 nic0 Link up、1G full、载波存在，RX 计数在 5 秒内增加 16 包；网关（以文档地址 `192.0.2.254` 表示）的 ARP 状态持续为 INCOMPLETE，ICMP 探测没有收到回复。这说明接口存在链路和接收活动，邻居发现却没有完成。它还不能证明目标 ARP 请求已经经过正确的桥和 VLAN 到达对端，更不能单独排除本机配置。对端设备不可用、网段变化或端口策略都是候选解释；缺少同一时段的 ARP 请求/回复抓包及对端检查，因此保留为推断。另一个配置问题是主机地址仍在原宿主上，迁交路由虚拟机时需要同步调整归属，避免两端重复持有同一地址造成冲突或流量路径混乱。
 
 ## 修复
 
-vmbr3 只桥接 nic0 和 VM103 的 net2，不接入 vmbr1/vmbr2，避免 ACT 流量串进内网主力网段。`192.168.5.239/32` 从宿主移到 doesrouter eth2。ACT WAN 加入既有 wan 防火墙区，保留 masquerade 和 WAN 入站拒绝。路由上，`192.168.5.0/24` 和 `219.224.171.1/32` 走 eth2 直达，公网默认仍走校园无线 metric 10，ACT 健康时才用 metric 4。ACT 公网出口自 11-02 起判定不稳定（SYN 无回应），net-watchdog 两轮探测不过就不加 metric 4 路由——即使 .254 恢复，ACT 也只当内网通道，公网继续走 Wi-Fi。
+vmbr3 只桥接 nic0 和 路由虚拟机 的 net2，不接入 vmbr1/vmbr2，避免 ACT 流量串进内网主力网段。`192.0.2.239/32` 从宿主移到 路由虚拟机 eth2。ACT WAN 加入既有 wan 防火墙区，保留 masquerade 和 WAN 入站拒绝。路由上，`192.0.2.0/24` 和 `198.51.100.1/32` 走 eth2 直达，公网默认仍走校园无线 metric 10，ACT 健康时才用 metric 4。当时 ACT 公网探测未通过（记录中还有 SYN 无回应），net-watchdog 两轮探测不过就不加 metric 4 路由——即使 .254 恢复，ACT 也只当内网通道，公网继续走 Wi-Fi。
 
 ## 经验
 
-排查物理链路时，Link up + RX 增长 + 网关 ARP INCOMPLETE 的组合意味着线和对端交换机都活着，只是网关设备本身不回应。不要在这条路上反复改桥、改路由、改防火墙。`/32` 主机地址必须从宿主移到 router，否则会产生三层回环。物理链路问题排查到这一层就该停了，剩下的是对端的维护问题。
+Link up、RX 增长和网关 ARP INCOMPLETE 分别描述链路、接收活动与邻居发现状态，不能合起来替代一条已经验证的报文路径。下一步需要确认 ARP 请求从正确接口发出、桥接与 VLAN 是否符合预期、回复是否返回，再结合对端状态缩小范围。当天选择保留可用的无线公网路径，并让有线默认路由受健康检查约束；这是一项恢复策略，不是已经查明了对端根因。
 
 🎵 Listening companion
 <NetEasePlay id="1857979755" kind="song" />
