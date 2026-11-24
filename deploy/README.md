@@ -72,6 +72,11 @@ routine deployment. The script rejects a key that changes during a backup.
 
 ## Release changes
 
+The complete archive has been verified with a bounded Node heap. In a small
+build container, use `NODE_OPTIONS=--max-old-space-size=1024 UV_THREADPOOL_SIZE=2 npm run build`,
+then `npm run check:site`. The image compression integration is disabled because
+it starts all PNG conversions concurrently; source image bytes are preserved.
+
 Build and test in a separate checkout, then upload a complete new release
 directory. Include `site/` from the static build and `server/` with its lockfile;
 run `npm ci --omit=dev --ignore-scripts` inside that release's `server/`.

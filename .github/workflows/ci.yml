@@ -12,6 +12,9 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=1024
+      UV_THREADPOOL_SIZE: 2
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
